@@ -75,11 +75,14 @@ def loadObj(path):
         obj = pickle.load(input)
     return obj
 
-def folderListAll(path):
+def folderListAll(path, ending = None):
     data_list =[]
     for (dirpath, dirnames, filenames) in os.walk(path):
         for i in filenames:
-            data_list.append(dirpath+'/'+i)
+            if ending:
+                if i.endswith(ending):data_list.append(dirpath.replace(path,'')+'/'+i)
+            else:
+                data_list.append(dirpath.replace(path,'')+'/'+i)
     data_list.sort()
     return data_list
 
@@ -99,8 +102,9 @@ def fileList(path, ending = None):
 
 # def convertAll(sourcePath, destinationPath):
 # dataPath = '/home/kononovdesk/Documents/Promotion/UPS/Data/'
-print fileList(dataPath, ending = '.txt') 
-
+#print fileList(dataPath, ending = '.txt') 
+path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
+print folderListAll(path, ending = '.txt')
 
 
 
