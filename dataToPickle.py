@@ -63,9 +63,6 @@ def dumpObj(obj,path):
     try:
         os.makedirs(os.path.dirname(path))
     except OSError:
-        #print '%s allready exists!' %path
-        sys.stdout.write('%s allready exists!\r' %path) 
-        sys.stdout.flush()
         pass
     with open(path, 'wb') as output:
         pickle.dump(obj, output, -1)
@@ -99,16 +96,51 @@ def fileList(path, ending = None):
     data_list.sort()
     return data_list
 
+def print_progress(count, total, status=''):
+    sys.stdout.flush()
+    bar_len = 15
+    filled_len = int(round(bar_len * count / float(total)))
 
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+    if count == total:
+        print  '[%s] %s%s ...%s\r' % (bar, percents, '%', status)
+    sys.stdout.flush()  # As suggested by Rom Ruben (see: http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console/27871113#comment50529068_27871113)
+    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+    
+def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite = False):
+    """
+    Converts all .txt files in the originPath directory into .pkl and puts them in seid aimPath Directory 
+    """
+    listOfDirs = folderListAll(originPath, ending = ending)
+    counter = 0
+    total_length = len(listOfDirs)
+    for files in listOfDirs:
+        counter += 1
+        print_progress(counter, total_length)
+        if exeptions:
+            if any(x in files for x in exeptions):
+                continue
+        try:
+            if overwrite == False and os.path.isfile(aimPath+files[:-3]+'pkl'):
+                continue
+            obj = readIgorTxt(originPath + files)
+            dumpObj(obj,aimPath+files[:-3]+'pkl')
+        except IndexError:
+            print 'Some .txt files could be in REDME or tmp directories.\n \
+                   Put them in to exeptions argument and try again.\n \
+                   Better in this way in order to finde errors!'
+            
+    
 # def convertAll(sourcePath, destinationPath):
 # dataPath = '/home/kononovdesk/Documents/Promotion/UPS/Data/'
 #print fileList(dataPath, ending = '.txt') 
-path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
-print folderListAll(path, ending = '.txt')
+# path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
+# print folderListAll(path, ending = '.txt')
 
-
-
-
+sourcePath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/testSource'
+aimPath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/testAim'
+convertAll(sourcePath, aimPath, exeptions = ['README', 'tmp'])
 
 
 
