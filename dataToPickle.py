@@ -129,7 +129,7 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
         except IndexError:
             print 'Some .txt files could be in REDME, trash or tmp directories.\n \
                    Put them in to exeptions argument and try again.\n \
-                   Better in this way in order to finde errors!'
+                   Better in this way in order to finde errors!\n'+files
             
     
 # def convertAll(sourcePath, destinationPath):
@@ -138,9 +138,9 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
 # path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
 # print folderListAll(path, ending = '.txt')
 
-sourcePath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/testSource'
-aimPath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/testAim'
-convertAll(sourcePath, aimPath, exeptions = ['README', 'tmp'])
+sourcePath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
+aimPath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl'
+convertAll(sourcePath, aimPath, exeptions = ['README', 'tmp', 'Trash'])
 
 
 
