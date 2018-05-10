@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 import numpy as np
-import os
-import cPickle as pickle
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy import constants as const
+import workingFunctions as wf
 """
 Proceding of ARPES data sets from OMICON SES Software.
 """
@@ -18,24 +17,6 @@ __maintainer__ = "Alexander Kononov"
 __email__ = "alexander.kononov@tu-dortmund.de"
 __status__ = "Production"
 
-
-def loadObj(path):
-    with open(path, 'rb') as input:
-        obj = pickle.load(input)
-    return obj
-
-def fileList(path, ending = None):
-    data_list =[]
-    for (dirpath, dirnames, filenames) in os.walk(path):
-        if ending is not None:
-            for i in filenames:
-                if i.endswith(ending):
-                    data_list.append(i)
-        else:
-            for i in filenames:
-                data_list.append(i)
-    data_list.sort()
-    return data_list
 
 def sliceData(data, xlim = None, ylim = None):
     if xlim:
@@ -85,16 +66,15 @@ def fermiFct(x,y,E_f,T):
 
 
 
-
 path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
-a = loadObj(path +'10001.pkl')
+a = wf.loadObj(path +'10001.pkl')
 aRedRef = reduceByX(sliceData(a[1], ylim =[-5,5])) 
 #aRed.plot(yerr = aRed.apply(np.sqrt))
 counter = 0
-for i in fileList(path):
+for i in wf.fileList(path):
     counter += 1
     fpath = path+i
-    a = loadObj(fpath)
+    a = wf.loadObj(fpath)
     aRed = reduceByX(sliceData(a[1], ylim =[-5,5]))
     #(aRedRef-aRed).plot()                 # yerr = aRed.apply(np.sqrt)
     aRed.plot(label=i)
