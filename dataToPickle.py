@@ -49,12 +49,21 @@ def readIgorTxt(igor_data_path):
         data = data.set_index([0])
         data.columns = dimTwo
         #data = data.to_panel()
+        info_dic = {}
         for i in info:
             if 'Dimension 1 name' in i:
                 data.index.name = i.split('=')[1]
             if 'Dimension 2 name' in i:
-                data.columns.name = i.split('=')[1]
-        return(info, data)
+                data.columns.name = i.split('=')[1] 
+            if i == '':
+                continue
+            if i.startswith('[') and i.endswith(']'):
+                info_dic[i] = {} 
+                curent_item = i
+                continue
+            sub_item = i.split('=' , 1)
+            info_dic[curent_item][sub_item[0]] = sub_item[1]
+        return(info_dic, data)
 
 def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite = False):
     """
@@ -81,9 +90,9 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
 
             
     
-sourcePath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
-aimPath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl'
-convertAll(sourcePath, aimPath, exeptions = ['README', 'tmp', 'Trash'])
+# sourcePath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data'
+# aimPath = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl'
+# convertAll(sourcePath, aimPath, exeptions = ['README', 'tmp', 'Trash'])
 
 
 

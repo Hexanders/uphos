@@ -66,23 +66,23 @@ def fermiFct(x,y,E_f,T):
 
 
 
-path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
-a = wf.loadObj(path +'10001.pkl')
-aRedRef = reduceByX(sliceData(a[1], ylim =[-5,5])) 
-#aRed.plot(yerr = aRed.apply(np.sqrt))
-counter = 0
-for i in wf.fileList(path):
-    counter += 1
-    fpath = path+i
-    a = wf.loadObj(fpath)
-    aRed = reduceByX(sliceData(a[1], ylim =[-5,5]))
-    #(aRedRef-aRed).plot()                 # yerr = aRed.apply(np.sqrt)
-    aRed.plot(label=i)
-    if counter == 2:
-        break
-plt.ylabel('Counts')
-plt.legend()
-plt.show()
+# path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
+# a = wf.loadObj(path +'10001.pkl')
+# aRedRef = reduceByX(sliceData(a[1], ylim =[-5,5])) 
+# #aRed.plot(yerr = aRed.apply(np.sqrt))
+# counter = 0
+# for i in wf.fileList(path):
+#     counter += 1
+#     fpath = path+i
+#     a = wf.loadObj(fpath)
+#     aRed = reduceByX(sliceData(a[1], ylim =[-5,5]))
+#     #(aRedRef-aRed).plot()                 # yerr = aRed.apply(np.sqrt)
+#     aRed.plot(label=i)
+#     if counter == 2:
+#         break
+# plt.ylabel('Counts')
+# plt.legend()
+# plt.show()
 
 
 # info,data = readIgorTxt(path)
