@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy import constants as const
 import workingFunctions as wf
+from bokeh.plotting import figure, show, ColumnDataSource
+from bokeh.io import output_notebook
+from bokeh.models import HoverTool
+from collections import OrderedDict
+
 """
 Proceding of ARPES data sets from OMICON SES Software.
 """
@@ -59,6 +64,23 @@ def plotData(data,title = None):
     plt.colorbar()
     plt.tight_layout()
     return im
+
+def plotRed(dataSet,info):
+    p = figure(plot_width=1000, plot_height=600,
+           tools="pan,box_zoom,reset,save,crosshair,hover,wheel_zoom", 
+           title="",
+           x_axis_label=dataSet.index.name, 
+           y_axis_label='Counts',
+           toolbar_location="left"
+          )
+
+    df = dataSet.reset_index()
+    df.columns = [dataSet.index.name,'Counts']
+    source = ColumnDataSource.from_df(df)
+    hover = p.select(dict(type=HoverTool))
+    hover.tooltips = OrderedDict(info['[Info 1]'].items())
+    p.line(x='index', y='Counts', source=source, legend=info['[Info 1]']['Spectrum Name'])
+    return p
 
 def fermiFct(x,y,E_f,T):
     k_b = const.value(u'Boltzmann constant in eV/K')

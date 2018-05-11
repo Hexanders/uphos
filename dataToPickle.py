@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import workingFunctions as wf
 
+
 def readIgorTxt(igor_data_path):
     """
     Convert data points from Igor Pro generated .txt file.
