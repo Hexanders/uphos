@@ -65,14 +65,17 @@ def plotData(data,title = None):
     plt.tight_layout()
     return im
 
-def plotRed(dataSet,info):
-    p = figure(plot_width=1000, plot_height=600,
-           tools="pan,box_zoom,reset,save,crosshair,hover,wheel_zoom", 
-           title="",
-           x_axis_label=dataSet.index.name, 
-           y_axis_label='Counts',
-           toolbar_location="left"
-          )
+def plotRed(dataSet,info, currentPlot = False):
+    if currentPlot:
+        p = currentPlot
+    else:
+        p = figure(plot_width=1000, plot_height=600,
+                   tools="pan,box_zoom,reset,save,crosshair,hover,wheel_zoom", 
+                   title="",
+                   x_axis_label=dataSet.index.name, 
+                   y_axis_label='Counts',
+                   toolbar_location="left"
+                   )
 
     df = dataSet.reset_index()
     df.columns = [dataSet.index.name,'Counts']
