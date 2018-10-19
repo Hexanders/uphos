@@ -1,6 +1,8 @@
 #!/usr/bin/python3
+
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 import pandas as pd
 from scipy import constants as const
 import workingFunctions as wf
@@ -8,6 +10,13 @@ from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
 from bokeh.models import HoverTool
 from collections import OrderedDict
+
+import PySimpleGUI as sg
+
+from PyQt4 import QtGui
+from PyQt4 import QtCore
+from PyQt4.QtCore import Qt
+plt.switch_backend('Qt4Agg') #### macht segfault hmmmmmmm
 
 """
 Proceding of ARPES data sets from OMICON SES Software.
@@ -21,7 +30,6 @@ __version__ = "0.2"
 __maintainer__ = "Alexander Kononov"
 __email__ = "alexander.kononov@tu-dortmund.de"
 __status__ = "Production"
-
 
 def sliceData(data, xlim = None, ylim = None):
     if xlim:
@@ -49,7 +57,7 @@ def reduceByY(data):
     #return np.add.reduce(data)
     return data.apply(np.sum, axis = 0)
 
-def plotData(data,title = None):
+def plotData_old(data,title = None):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     if title:
@@ -90,6 +98,70 @@ def fermiFct(x,y,E_f,T):
     return 1./(np.exp((x-E_f)/k_b*T)+1.)
 
 
+buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
+
+def plotData(data,title = None):
+    fig = plt.figure()
+    # cid = fig.canvas.mpl_connect('resize_event', onresize)
+    global ax
+    ax = fig.add_subplot(111)
+    if title:
+        fig.canvas.set_window_title(title)
+    else:
+        fig.canvas.set_window_title('Data_Set')
+    x,y = data.index.values, data.columns.values
+    extent = np.min(x), np.max(x), np.min(y), np.max(y)
+    im = plt.imshow(data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+    plt.xlabel(data.index.name)
+    plt.ylabel(data.columns.name)
+    plt.colorbar()
+    plt.tight_layout()
+    button1pos= plt.axes([0.79, 0.0, 0.1, 0.075])
+    button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+
+    bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
+    bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
+    bcut1.on_clicked(lambda event: on_clickX(event, data))
+    bcut2.on_clicked(lambda event: on_clickY(event, data))
+    button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
+    button2pos._button = bcut2
+    return im, data
+
+def on_clickX(event,data):
+        print('Start to Integrate X')
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()      
+        slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
+        reducedData = reduceByX(slicedData)
+        ax2.plot(reducedData)
+        button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+        bcut3 = Button(button3pos, 'Save', color=buttoncolor)
+        plt.show()
+        bcut3.on_clicked(lambda event:saveReduceData(event, reducedData))
+        button3pos._button = bcut3
+        
+
+def on_clickY(event, data):
+    print('Start to Integrate X')
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+    bcut4 = Button(button4pos, 'Save', color=buttoncolor)
+    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
+    reducedData = reduceByY(slicedData)
+    ax2.plot(reducedData)
+    plt.show()
+    bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
+    button3pos._button = bcut4
+
+def saveReduceData(event, reddata):
+    event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()] ]).Read()
+    reddata.to_pickle(filename)
+    return event
 
 # path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
 # a = wf.loadObj(path +'10001.pkl')

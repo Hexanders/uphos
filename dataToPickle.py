@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import numpy as np
 import pandas as pd
 import time
@@ -85,9 +86,9 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
             obj = readIgorTxt(originPath + files)
             wf.dumpObj(obj,aimPath+files[:-3]+'pkl')
         except IndexError:
-            print 'Some .txt files could be in REDME, trash or tmp directories.\n \
+            print('Some .txt files could be in REDME, trash or tmp directories.\n \
                    Put them in to exeptions argument and try again.\n \
-                   Better in this way in order to finde errors!\n'+files
+                   Better in this way in order to finde errors!\n'+files)
 
             
     
