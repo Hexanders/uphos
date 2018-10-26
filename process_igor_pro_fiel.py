@@ -11,6 +11,8 @@ from bokeh.io import output_notebook
 from bokeh.models import HoverTool
 from collections import OrderedDict
 
+from scipy.optimize import curve_fit
+
 import PySimpleGUI as sg
 
 from PyQt4 import QtGui
@@ -93,9 +95,9 @@ def plotRed(dataSet,info, currentPlot = False):
     p.line(x='index', y='Counts', source=source, legend=info['[Info 1]']['Spectrum Name'])
     return p
 
-def fermiFct(x,y,E_f,T):
+def fermiFct(x,E_f,T,b,s):
     k_b = const.value(u'Boltzmann constant in eV/K')
-    return 1./(np.exp((x-E_f)/k_b*T)+1.)
+    return b + s*(1./(np.exp((x-E_f)/k_b*T)))
 
 
 buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
@@ -128,19 +130,37 @@ def plotData(data,title = None):
     return im, data
 
 def on_clickX(event,data):
-        print('Start to Integrate X')
-        fig2 = plt.figure()
-        ax2 = fig2.add_subplot(111)
-        x_lim = ax.get_xlim()
-        y_lim = ax.get_ylim()      
-        slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
-        reducedData = reduceByX(slicedData)
-        ax2.plot(reducedData)
-        button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-        bcut3 = Button(button3pos, 'Save', color=buttoncolor)
-        plt.show()
-        bcut3.on_clicked(lambda event:saveReduceData(event, reducedData))
-        button3pos._button = bcut3
+    print('Start to Integrate X')
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    ax2.set_title('Limits x:%s y:%s' %(x_lim, y_lim))
+    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
+    reducedData = reduceByX(slicedData)
+    #print(reducedData.values, type(reducedData), len(reducedData))
+    ax2.plot(reducedData, 'bo')
+    button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+    bcut3 = Button(button3pos, 'Save', color=buttoncolor)
+    buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
+    buttonFit = Button(buttonFitpos, 'Fit', color=buttoncolor)
+    plt.show()
+    bcut3.on_clicked(lambda event:saveReduceData(event, reducedData))
+    buttonFit.on_clicked(lambda event:fitFermi(event,reducedData,ax2))
+    button3pos._button = bcut3 #without this the garbage collector destroyes the button
+    buttonFitpos._button = buttonFit
+    plt.legend()
+    
+def fitFermi(event, data, ax):
+    mask = (data.index > 16.2) & (data.index <= 17.0)
+    popt, pcov = curve_fit(fermiFct, data.index[mask], data.values[mask], p0=[16.8867,10.0,-1e-6,1000])
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    ax.plot(data.index[mask], fermiFct(data.index[mask], *popt), 'r-', label='fit: E_f=%5.3f, T=%5.3f,b=%5.3f,c=%5.3f ' % tuple(popt))
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    print('POPT:%s' % (popt))
+    plt.draw()
         
 
 def on_clickY(event, data):
@@ -149,6 +169,7 @@ def on_clickY(event, data):
     ax2 = fig2.add_subplot(111)
     x_lim = ax.get_xlim()
     y_lim = ax.get_ylim()
+    ax2.set_title('Limits x:%s y:%s' %(x_lim, y_lim))
     button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
     bcut4 = Button(button4pos, 'Save', color=buttoncolor)
     slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
@@ -156,7 +177,7 @@ def on_clickY(event, data):
     ax2.plot(reducedData)
     plt.show()
     bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
-    button3pos._button = bcut4
+    button4pos._button = bcut4
 
 def saveReduceData(event, reddata):
     event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()] ]).Read()
