@@ -5,6 +5,10 @@ from matplotlib.widgets import Button
 import pandas as pd
 from scipy import constants as const
 import workingFunctions as wf
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
+import tkinter as Tk
+import matplotlib.backends.tkagg as tkagg
+
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
 from bokeh.models import HoverTool
@@ -131,6 +135,7 @@ def plotData(data,title = None):
     button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
     button2pos._button = bcut2
     button3pos._button = bcut3
+    #im = plt.gcf()
     return im
 
 def on_clickInfo(event,data):
@@ -141,7 +146,7 @@ def on_clickInfo(event,data):
         dictlist.append(temp)
     # event = sg.Window('Info'). Layout([[sg.Listbox(values=dictlist,size=(40, 20))],[sg.Cancel()] ]).Read()
     # event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline(dictlist,size=(80, 10))],[sg.Cancel()] ]).Read()
-    event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(data)],size=(80, 10))],[sg.Cancel()] ]).Read()    
+    event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(data)],size=(80, 10))],[sg.Cancel()]]).Read()    
     return event
 
 def grab_dic(data):
@@ -160,7 +165,8 @@ def on_clickX(event,data):
     ax2 = fig2.add_subplot(111)
     x_lim = ax.get_xlim()
     y_lim = ax.get_ylim()
-    ax2.set_title('Limits x:%s y:%s' %(x_lim, y_lim))
+    digis = 3
+    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
     slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
     reducedData = reduceByX(slicedData)
     #print(reducedData.values, type(reducedData), len(reducedData))
@@ -181,14 +187,43 @@ def fermiFct(x,E_f,b,s,T):
     return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
 
 def fitPanel(event, ax, data):
-    GUI_rows = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    line1 = ax.axvline(x=x_lim[0])
+    line2 = ax.axvline(x=x_lim[1])
+    x_abstand = abs(x_lim[1]-x_lim[0])/len(data)
+    layout = [
+        [sg.Text(r'Left'), sg.Slider(key = 'LeftLeft',range=(x_lim[0]*1e5,x_lim[1]*1e5), resolution = 1, orientation='h', size=(34, 20), default_value=x_lim[0]),
+         sg.Slider(key = 'LeftRight', range=(x_lim[0]*1e5,x_lim[1]*1e5),resolution = 1, orientation='h', size=(34, 20), default_value=x_lim[0]),],
+        [sg.Text(r'Right'), sg.Slider(key = 'RightLeft',range=(x_lim[0]*1e5,x_lim[1]*1e5), resolution = x_abstand, orientation='h', size=(34, 20), default_value=x_lim[1]),
+         sg.Slider(key = 'RightRight', range=(x_lim[0]*1e5,x_lim[1]*1e5),resolution = x_abstand, orientation='h', size=(34, 20), default_value=x_lim[1]),],
+        [sg.ReadButton('Fit'), sg.Cancel()],
+    ]
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number))
+    window.Layout(layout)
+    window.Finalize()
+    while True:
+        if event == 'Ok' or event is None:    # be nice to your user, always have an exit from your form
+            break
+        event, values = window.Read()
+        print(values)
+        del line1
+        line1 = ax.axvline(x=values['LeftLeft']/1e5)
+        plt.show()
+    return event, values
+
+
+def fitPanel_old(event, ax, data):
+    layout = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
                 [sg.Text(r'E_f'), sg.InputText('16.89',key='E_f')],
                 [sg.Text(r'B'), sg.InputText('5000',key='B')],
                 [sg.Text(r'S'), sg.InputText('200000',key='S')],
                 [sg.Text(r'T'), sg.InputText('10',key='T')],      
-                [sg.ReadButton('Fit'), sg.Cancel()]]
-    window = sg.Window('Fit Parameter')
-    window.Layout(GUI_rows)
+                [sg.ReadButton('Fit'), sg.Cancel()],
+    ]
+    window = sg.Window('Fit Parameter',force_top_level = True)
+    window.Layout(layout)
+    window.Finalize()
     while True:      
         event2, values = window.Read()
         if event2 is None:      
@@ -236,17 +271,18 @@ def fitFermi(event, data, ax, p0):
         
 
 def on_clickY(event, data):
-    print('Start to Integrate X')
+    print('Start to Integrate Y')
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
     x_lim = ax.get_xlim()
     y_lim = ax.get_ylim()
-    ax2.set_title('Limits x:%s y:%s' %(x_lim, y_lim))
+    digis = 3
+    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
     button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
     bcut4 = Button(button4pos, 'Save', color=buttoncolor)
     slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
     reducedData = reduceByY(slicedData)
-    ax2.plot(reducedData)
+    ax2.plot(reducedData, 'ko')
     plt.show()
     bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
     button4pos._button = bcut4
