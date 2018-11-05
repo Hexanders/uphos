@@ -174,42 +174,99 @@ def on_clickX(event,data):
     button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
     bcut3 = Button(button3pos, 'Save', color=buttoncolor)
     buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
-    buttonFit = Button(buttonFitpos, 'Fit', color=buttoncolor)
+    buttonFit = Button(buttonFitpos, 'Fit-Panel', color=buttoncolor)
     bcut3.on_clicked(lambda event:saveReduceData(event, reducedData))
-    buttonFit.on_clicked(lambda event:fitPanel(event, ax2, data))
+    buttonFit.on_clicked(lambda event:fitPanel(event, ax2, reducedData))
     button3pos._button = bcut3 #without this the garbage collector destroyes the button
     buttonFitpos._button = buttonFit
     plt.show()
     #plt.legend()
 
-def fermiFct(x,E_f,b,s,T):
-    k_b = const.value(u'Boltzmann constant in eV/K')
-    return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
-
 def fitPanel(event, ax, data):
     x_lim = ax.get_xlim()
     y_lim = ax.get_ylim()
-    line1 = ax.axvline(x=x_lim[0])
-    line2 = ax.axvline(x=x_lim[1])
     x_abstand = abs(x_lim[1]-x_lim[0])/len(data)
+    leftbound, rightbound = x_lim[0], x_lim[1]
+    leftboundStep = x_lim[0]+abs(x_lim[1]-x_lim[0])*0.05
+    rightboundStep = x_lim[1]-abs(x_lim[1]-x_lim[0])*0.05
+    faktor = 1e5                # da es in PySimpleGUI der slider nur die int Werte zurueck gibt
     layout = [
-        [sg.Text(r'Left'), sg.Slider(key = 'LeftLeft',range=(x_lim[0]*1e5,x_lim[1]*1e5), resolution = 1, orientation='h', size=(34, 20), default_value=x_lim[0]),
-         sg.Slider(key = 'LeftRight', range=(x_lim[0]*1e5,x_lim[1]*1e5),resolution = 1, orientation='h', size=(34, 20), default_value=x_lim[0]),],
-        [sg.Text(r'Right'), sg.Slider(key = 'RightLeft',range=(x_lim[0]*1e5,x_lim[1]*1e5), resolution = x_abstand, orientation='h', size=(34, 20), default_value=x_lim[1]),
-         sg.Slider(key = 'RightRight', range=(x_lim[0]*1e5,x_lim[1]*1e5),resolution = x_abstand, orientation='h', size=(34, 20), default_value=x_lim[1]),],
+        [sg.Text(r'Left'), sg.Slider(key = 'LeftLeft', change_submits = True, background_color = 'red',\
+                                     range=(x_lim[0]*faktor,x_lim[1]*faktor), resolution = 1, orientation='h', size=(34, 20), default_value=leftbound),
+        sg.Slider(key = 'LeftRight', change_submits = True, background_color = 'red', \
+                  range=(x_lim[0]*faktor,x_lim[1]*faktor),resolution = 1, orientation='h', size=(34, 20), default_value=leftboundStep),\
+        sg.Spin(data.index,key='LeftLeftTxt',size=(10, 20), auto_size_text = True),\
+        sg.Spin(data.index,key='LeftRightTxt',size=(10, 20), auto_size_text = True)],
+        
+        [sg.Text(r'Right'), sg.Slider(key = 'RightLeft', change_submits = True, background_color = 'green',\
+                                      range=(x_lim[0]*faktor,x_lim[1]*faktor), resolution = x_abstand, orientation='h', size=(34, 20), default_value=rightboundStep),
+        sg.Slider(key = 'RightRight', change_submits = True, background_color = 'green',\
+                  range=(x_lim[0]*faktor,x_lim[1]*faktor),resolution = x_abstand, orientation='h', size=(34, 20), default_value=rightbound),
+        sg.Spin(data.index,key='RightLeftTxt',size=(10, 20), auto_size_text = True),
+        sg.Spin(data.index,key='RightRightTxt',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit'), sg.Cancel()],
     ]
+    # layoutFermi = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
+    #             [sg.Text(r'E_f'), sg.InputText('16.89',key='E_f')],
+    #             [sg.Text(r'B'), sg.InputText('5000',key='B')],
+    #             [sg.Text(r'S'), sg.InputText('200000',key='S')],
+    #             [sg.Text(r'T'), sg.InputText('10',key='T')],      
+    #             [sg.ReadButton('Fit-Fermi'), sg.Cancel()],
+    # ]
+   
     window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number))
+    # window.Layout(layout + layoutFermi)
     window.Layout(layout)
     window.Finalize()
+    #print(window)
+    line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>')
+    line2, = ax.plot((leftboundStep, leftboundStep),y_lim, color = 'r', marker = '<')
+    line3, = ax.plot((rightboundStep, rightboundStep),y_lim, color = 'g', marker = '>')
+    line4, = ax.plot((rightbound, rightbound),y_lim, color = 'g', marker = '<')
+    leftFit =[]
+    rightFit = []
     while True:
-        if event == 'Ok' or event is None:    # be nice to your user, always have an exit from your form
-            break
         event, values = window.Read()
-        print(values)
-        del line1
-        line1 = ax.axvline(x=values['LeftLeft']/1e5)
-        plt.show()
+        if event == 'Cancel' or event is None:    # be nice to your user, always have an exit from your form
+            line1.remove()
+            line2.remove()
+            line3.remove()
+            line4.remove()
+            break
+        line1.set_xdata((values['LeftLeft']/faktor,values['LeftLeft']/faktor))
+        line2.set_xdata((values['LeftRight']/faktor,values['LeftRight']/faktor))
+        line3.set_xdata((values['RightLeft']/faktor,values['RightLeft']/faktor))
+        line4.set_xdata((values['RightRight']/faktor,values['RightRight']/faktor))
+        window.FindElement('LeftLeftTxt').Update(values['LeftLeft']/faktor)
+        window.FindElement('LeftRightTxt').Update(values['LeftRight']/faktor)
+        window.FindElement('RightLeftTxt').Update(values['RightLeft']/faktor)
+        window.FindElement('RightRightTxt').Update(values['RightRight']/faktor)
+        if event == 'Fit':
+            leftFitPara = fitLinear(event, (values['LeftLeft']/faktor,values['LeftRight']/faktor), data, ax, 'red')
+            rightFitPara = fitLinear(event, (values['RightLeft']/faktor,values['RightRight']/faktor), data, ax, 'green')
+            if leftFit:
+                leftFit[0].set_ydata(LinearFit(data.index,*leftFitPara))
+                rightFit[0].set_ydata(LinearFit(data.index,*rightFitPara))
+            else:
+                leftFit = ax.plot(data.index, LinearFit(data.index, *leftFitPara), color = 'red', label='fit: a=%5.3f, b=%5.3f ' % tuple(leftFitPara))
+                rightFit = ax.plot(data.index, LinearFit(data.index, *rightFitPara), color = 'green', label='fit: a=%5.3f, b=%5.3f ' % tuple(rightFitPara))
+        plt.draw()
+        # if event == 'Fit-Fermi':
+        #     try:
+        #         keys = ['E_f','B','S','T']
+        #         p0=[values.get(key) for key in keys]
+        #         print(p0)
+        #         event, tmp_values = fitFermi(event, data, ax, p0)
+        #         values.update(values)
+        #     except:
+        #         print("Error:", sys.exc_info()[0])
+        #         pass
+        #     keys = ['E_f','B','S','T']
+        #     E_f, B, S, T = [values.get(key) for key in keys]#['16.89','5000', '200000', '10']
+        #     window.FindElement('E_f').Update(str(E_f))
+        #     window.FindElement('B').Update(str(B))
+        #     window.FindElement('S').Update(str(S))
+        #     window.FindElement('T').Update(str(T))
     return event, values
 
 
@@ -230,7 +287,9 @@ def fitPanel_old(event, ax, data):
             break
         if event2 == 'Fit':
             try:
-                event, values = fitFermi(event, data, ax, values.values())
+                p0 = values.values('E_f','B','S','T')
+                print(p0)
+                event, values = fitFermi(event, data, ax, p0)
             except:
                 print("Error:", sys.exc_info()[0])
                 raise
@@ -241,8 +300,33 @@ def fitPanel_old(event, ax, data):
         window.FindElement('T').Update(str(T))
     return event, values
 
+def fermiFct(x,E_f,b,s,T):
+    k_b = const.value(u'Boltzmann constant in eV/K')
+    return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
+
+def LinearFit(x,a,b):
+    return a*x+b
+
+def fitLinear(event, x_range, data, ax, color):
+    mask = (data.index > x_range[0]) & (data.index <= x_range[1])
+    
+    # try:
+    #     p0=[float(x) for x in p0]
+    # except:
+    #     print("Error:", sys.exc_info()[0])
+    #     raise
+    try:
+        popt, pcov = curve_fit(LinearFit, data.index[mask], data.values[mask])
+    except:
+        print("Error:", sys.exc_info()[0])
+        raise
+    #fitPlot = ax.plot(data.index, LinearFit(data.index, *popt), color = color, label='fit: a=%5.3f, b=%5.3f ' % tuple(popt))
+    return popt
+
 def fitFermi(event, data, ax, p0):
-    mask = (data.index > 16.2) & (data.index <= 17.0)
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    mask = (data.index > x_lim[0]) & (data.index <= x_lim[1])
     # print(data.values[mask][:,0], data.values[mask][:,1])
     # print(len(data.index[mask]), len(data.values[mask]))
     # print(type(data.index[mask]), type(data.values[mask]))
@@ -253,12 +337,10 @@ def fitFermi(event, data, ax, p0):
         print("Error:", sys.exc_info()[0])
         raise
     try:
-        popt, pcov = curve_fit(fermiFct, data.index[mask], data.values[mask][:,0], p0=p0)
+        popt, pcov = curve_fit(fermiFct, data.index[mask], data.values[mask], p0=p0)
     except:
         print("Error:", sys.exc_info()[0])
         raise
-    x_lim = ax.get_xlim()
-    y_lim = ax.get_ylim()
     # if fitPlot:
     #     print(fitPlot)
     #     fitPlot.pop(0).remove()
@@ -266,8 +348,9 @@ def fitFermi(event, data, ax, p0):
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     plt.show()
-    print('POPT:%s' % (popt))
-    return event, p0
+    #print('POPT:%s' % (popt))
+    values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
+    return event, values
         
 
 def on_clickY(event, data):
