@@ -190,20 +190,20 @@ def fitPanel(event, ax, data):
     leftboundStep = x_lim[0]+abs(x_lim[1]-x_lim[0])*0.05
     rightboundStep = x_lim[1]-abs(x_lim[1]-x_lim[0])*0.05
     faktor = 1e5                # da es in PySimpleGUI der slider nur die int Werte zurueck gibt
-    layout = [
-        [sg.Text(r'Left'), sg.Slider(key = 'LeftLeft', change_submits = True, background_color = 'red',\
-                                     range=(x_lim[0]*faktor,x_lim[1]*faktor), resolution = 1, orientation='h', size=(34, 20), default_value=leftbound),
-        sg.Slider(key = 'LeftRight', change_submits = True, background_color = 'red', \
+    layout = [# ll, lr steht fuer LeftLeft, LeftRight, ... 
+        [sg.Text(r'Left'), \
+        sg.Slider(key = 'll_slider', change_submits = True, background_color = 'red',\
+                  range=(x_lim[0]*faktor,x_lim[1]*faktor), resolution = 1, orientation='h', size=(34, 20), default_value=leftbound),
+        sg.Slider(key = 'lr_slider', change_submits = True, background_color = 'red', \
                   range=(x_lim[0]*faktor,x_lim[1]*faktor),resolution = 1, orientation='h', size=(34, 20), default_value=leftboundStep),\
-        sg.Spin(data.index,key='LeftLeftTxt',size=(10, 20), auto_size_text = True),\
-        sg.Spin(data.index,key='LeftRightTxt',size=(10, 20), auto_size_text = True)],
-        
-        [sg.Text(r'Right'), sg.Slider(key = 'RightLeft', change_submits = True, background_color = 'green',\
+        sg.Spin(data.index,key='ll_spin',size=(10, 20), auto_size_text = True),\
+        sg.Spin(data.index,key='lr_spin',size=(10, 20), auto_size_text = True)],
+        [sg.Text(r'Right'), sg.Slider(key = 'rl_slider', change_submits = True, background_color = 'green',\
                                       range=(x_lim[0]*faktor,x_lim[1]*faktor), resolution = x_abstand, orientation='h', size=(34, 20), default_value=rightboundStep),
-        sg.Slider(key = 'RightRight', change_submits = True, background_color = 'green',\
+        sg.Slider(key = 'rr_slider', change_submits = True, background_color = 'green',\
                   range=(x_lim[0]*faktor,x_lim[1]*faktor),resolution = x_abstand, orientation='h', size=(34, 20), default_value=rightbound),
-        sg.Spin(data.index,key='RightLeftTxt',size=(10, 20), auto_size_text = True),
-        sg.Spin(data.index,key='RightRightTxt',size=(10, 20), auto_size_text = True)],
+        sg.Spin(data.index,key='rl_spin',size=(10, 20), auto_size_text = True),
+        sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit'), sg.Cancel()],
     ]
     # layoutFermi = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
@@ -214,7 +214,7 @@ def fitPanel(event, ax, data):
     #             [sg.ReadButton('Fit-Fermi'), sg.Cancel()],
     # ]
    
-    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number))
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number), grab_anywhere=False)
     # window.Layout(layout + layoutFermi)
     window.Layout(layout)
     window.Finalize()
@@ -233,17 +233,25 @@ def fitPanel(event, ax, data):
             line3.remove()
             line4.remove()
             break
-        line1.set_xdata((values['LeftLeft']/faktor,values['LeftLeft']/faktor))
-        line2.set_xdata((values['LeftRight']/faktor,values['LeftRight']/faktor))
-        line3.set_xdata((values['RightLeft']/faktor,values['RightLeft']/faktor))
-        line4.set_xdata((values['RightRight']/faktor,values['RightRight']/faktor))
-        window.FindElement('LeftLeftTxt').Update(values['LeftLeft']/faktor)
-        window.FindElement('LeftRightTxt').Update(values['LeftRight']/faktor)
-        window.FindElement('RightLeftTxt').Update(values['RightLeft']/faktor)
-        window.FindElement('RightRightTxt').Update(values['RightRight']/faktor)
+        line1.set_xdata((values['ll_slider']/faktor,values['ll_slider']/faktor))
+        line2.set_xdata((values['lr_slider']/faktor,values['lr_slider']/faktor))
+        line3.set_xdata((values['rl_slider']/faktor,values['rl_slider']/faktor))
+        line4.set_xdata((values['rr_slider']/faktor,values['rr_slider']/faktor))
+        # ll_slider = values['ll_slider']
+        # ll_spin = values['ll_spin'] 
+        # lr_slider = values['lr_slider']
+        # lr_spin =values['lr_spin']
+        # rl_slider =values['rl_slider']
+        # rl_spiner = values['rl_spin']
+        # rr_slider =values['rr_slider']
+        # rr_spiner = values['rr_spin']
+        window.FindElement('ll_spin').Update(values['ll_slider']/faktor)
+        window.FindElement('lr_spin').Update(values['lr_slider']/faktor)
+        window.FindElement('rl_spin').Update(values['rl_slider']/faktor)
+        window.FindElement('rr_spin').Update(values['rr_slider']/faktor)
         if event == 'Fit':
-            leftFitPara = fitLinear(event, (values['LeftLeft']/faktor,values['LeftRight']/faktor), data, ax, 'red')
-            rightFitPara = fitLinear(event, (values['RightLeft']/faktor,values['RightRight']/faktor), data, ax, 'green')
+            leftFitPara = fitLinear(event, (values['ll_slider']/faktor,values['lr_slider']/faktor), data, ax, 'red')
+            rightFitPara = fitLinear(event, (values['rl_slider']/faktor,values['rr_slider']/faktor), data, ax, 'green')
             if leftFit:
                 leftFit[0].set_ydata(LinearFit(data.index,*leftFitPara))
                 rightFit[0].set_ydata(LinearFit(data.index,*rightFitPara))
