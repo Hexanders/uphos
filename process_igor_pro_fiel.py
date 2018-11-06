@@ -4,6 +4,7 @@ import sys
 from matplotlib.widgets import Button
 import pandas as pd
 from scipy import constants as const
+from scipy.interpolate import interp1d
 import workingFunctions as wf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk
@@ -219,10 +220,10 @@ def fitPanel(event, ax, data):
     window.Layout(layout)
     window.Finalize()
     #print(window)
-    line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>')
-    line2, = ax.plot((leftboundStep, leftboundStep),y_lim, color = 'r', marker = '<')
-    line3, = ax.plot((rightboundStep, rightboundStep),y_lim, color = 'g', marker = '>')
-    line4, = ax.plot((rightbound, rightbound),y_lim, color = 'g', marker = '<')
+    line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
+    line2, = ax.plot((leftboundStep, leftboundStep),y_lim, color = 'r', marker = '<', alpha=0.5)
+    line3, = ax.plot((rightboundStep, rightboundStep),y_lim, color = 'g', marker = '>', alpha=0.5)
+    line4, = ax.plot((rightbound, rightbound),y_lim, color = 'g', marker = '<', alpha=0.5)
     leftFit =[]
     rightFit = []
     while True:
@@ -258,6 +259,10 @@ def fitPanel(event, ax, data):
             else:
                 leftFit = ax.plot(data.index, LinearFit(data.index, *leftFitPara), color = 'red', label='fit: a=%5.3f, b=%5.3f ' % tuple(leftFitPara))
                 rightFit = ax.plot(data.index, LinearFit(data.index, *rightFitPara), color = 'green', label='fit: a=%5.3f, b=%5.3f ' % tuple(rightFitPara))
+            inter = interpolate(data, ax)    
+            ax.plot(inter[0], inter[1])      
+            ax.scatter(inter[0], inter[1])
+        plt.legend()
         plt.draw()
         # if event == 'Fit-Fermi':
         #     try:
@@ -275,6 +280,7 @@ def fitPanel(event, ax, data):
         #     window.FindElement('B').Update(str(B))
         #     window.FindElement('S').Update(str(S))
         #     window.FindElement('T').Update(str(T))
+    window.Close()
     return event, values
 
 
@@ -359,7 +365,23 @@ def fitFermi(event, data, ax, p0):
     #print('POPT:%s' % (popt))
     values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
     return event, values
-        
+
+def interpolate(data, ax, xstep = None):
+    '''
+    xstep: int faktor of the interpolated points. So if xstep = 2, two times more points would be created. Default 10
+    '''
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    if x_lim[0]<data.index.min():
+        x_lim = data.index.min(), x_lim[1]
+    if x_lim[1]>data.index.max():
+        x_lim = x_lim[0], data.index.max()
+    mask = (data.index > x_lim[0]) & (data.index <= x_lim[1])
+    f = interp1d(data.index[mask], data.values[mask], fill_value="extrapolate")
+    if xstep == None:
+        xstep = 10
+    newx = np.linspace(x_lim[0], x_lim[1], num=xstep*len(data.index[mask]), endpoint=True)
+    return newx, f(newx)
 
 def on_clickY(event, data):
     print('Start to Integrate Y')
