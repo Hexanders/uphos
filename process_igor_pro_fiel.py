@@ -205,7 +205,9 @@ def fitPanel(event, ax, data):
                   range=(x_lim[0]*faktor,x_lim[1]*faktor),resolution = x_abstand, orientation='h', size=(34, 20), default_value=rightbound),
         sg.Spin(data.index,key='rl_spin',size=(10, 20), auto_size_text = True),
         sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
-        [sg.ReadButton('Fit'), sg.Cancel()],
+        [sg.ReadButton('Fit')],
+        [sg.ReadButton('Finde Fermi Edge'), sg.Cancel()],
+        
     ]
     # layoutFermi = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
     #             [sg.Text(r'E_f'), sg.InputText('16.89',key='E_f')],
@@ -262,6 +264,12 @@ def fitPanel(event, ax, data):
             inter = interpolate(data, ax)    
             ax.plot(inter[0], inter[1])      
             ax.scatter(inter[0], inter[1])
+        if event == 'Finde Fermi Edge':
+            try:
+                finde_edge(inter,leftFitPara,rightFitPara,ax)
+            except:
+                print("Error:", sys.exc_info()[0]) 
+                raise
         plt.legend()
         plt.draw()
         # if event == 'Fit-Fermi':
@@ -283,6 +291,13 @@ def fitPanel(event, ax, data):
     window.Close()
     return event, values
 
+def finde_edge(interPolData, fit1Para, fit2Para, ax):
+    for i in range(0, len(interPolData[0])):
+        diff = 0.5*(abs(LinearFit(interPolData[0][i],*fit1Para)-LinearFit(interPolData[0][i],*fit2Para)))
+        toProof = interPolData[1][i] - LinearFit(interPolData[0][i],*fit2Para)
+        if toProof <= diff:
+            ax.axvline(x=interPolData[0][i], color = 'k', dashes = (5, 1))
+            plt.draw()
 
 def fitPanel_old(event, ax, data):
     layout = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
