@@ -181,7 +181,6 @@ def on_clickX(event,data):
     button3pos._button = bcut3 #without this the garbage collector destroyes the button
     buttonFitpos._button = buttonFit
     plt.show()
-    #plt.legend()
 
 def fitPanel(event, ax, data):
     x_lim = ax.get_xlim()
@@ -206,22 +205,13 @@ def fitPanel(event, ax, data):
         sg.Spin(data.index,key='rl_spin',size=(10, 20), auto_size_text = True),
         sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit')],
-        [sg.ReadButton('Finde Fermi Edge'), sg.Cancel()],
-        
+        [sg.ReadButton('Finde Fermi Edge'), sg.Text(r'Fermi edge [eV]'), sg.InputText(size =(10,20), key='fermi_edge'), sg.Text('16%-84% width [eV]'), sg.InputText(size =(10,20),  key = 'resolution')] ,
+        [sg.Cancel()],
     ]
-    # layoutFermi = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
-    #             [sg.Text(r'E_f'), sg.InputText('16.89',key='E_f')],
-    #             [sg.Text(r'B'), sg.InputText('5000',key='B')],
-    #             [sg.Text(r'S'), sg.InputText('200000',key='S')],
-    #             [sg.Text(r'T'), sg.InputText('10',key='T')],      
-    #             [sg.ReadButton('Fit-Fermi'), sg.Cancel()],
-    # ]
    
     window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number), grab_anywhere=False)
-    # window.Layout(layout + layoutFermi)
     window.Layout(layout)
     window.Finalize()
-    #print(window)
     line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
     line2, = ax.plot((leftboundStep, leftboundStep),y_lim, color = 'r', marker = '<', alpha=0.5)
     line3, = ax.plot((rightboundStep, rightboundStep),y_lim, color = 'g', marker = '>', alpha=0.5)
@@ -230,74 +220,86 @@ def fitPanel(event, ax, data):
     rightFit = []
     while True:
         event, values = window.Read()
-        if event == 'Cancel' or event is None:    # be nice to your user, always have an exit from your form
-            line1.remove()
-            line2.remove()
-            line3.remove()
-            line4.remove()
-            break
         line1.set_xdata((values['ll_slider']/faktor,values['ll_slider']/faktor))
         line2.set_xdata((values['lr_slider']/faktor,values['lr_slider']/faktor))
         line3.set_xdata((values['rl_slider']/faktor,values['rl_slider']/faktor))
         line4.set_xdata((values['rr_slider']/faktor,values['rr_slider']/faktor))
-        # ll_slider = values['ll_slider']
-        # ll_spin = values['ll_spin'] 
-        # lr_slider = values['lr_slider']
-        # lr_spin =values['lr_spin']
-        # rl_slider =values['rl_slider']
-        # rl_spiner = values['rl_spin']
-        # rr_slider =values['rr_slider']
-        # rr_spiner = values['rr_spin']
         window.FindElement('ll_spin').Update(values['ll_slider']/faktor)
         window.FindElement('lr_spin').Update(values['lr_slider']/faktor)
         window.FindElement('rl_spin').Update(values['rl_slider']/faktor)
         window.FindElement('rr_spin').Update(values['rr_slider']/faktor)
         if event == 'Fit':
-            leftFitPara = fitLinear(event, (values['ll_slider']/faktor,values['lr_slider']/faktor), data, ax, 'red')
-            rightFitPara = fitLinear(event, (values['rl_slider']/faktor,values['rr_slider']/faktor), data, ax, 'green')
-            if leftFit:
-                leftFit[0].set_ydata(LinearFit(data.index,*leftFitPara))
-                rightFit[0].set_ydata(LinearFit(data.index,*rightFitPara))
-            else:
-                leftFit = ax.plot(data.index, LinearFit(data.index, *leftFitPara), color = 'red', label='fit: a=%5.3f, b=%5.3f ' % tuple(leftFitPara))
-                rightFit = ax.plot(data.index, LinearFit(data.index, *rightFitPara), color = 'green', label='fit: a=%5.3f, b=%5.3f ' % tuple(rightFitPara))
-            inter = interpolate(data, ax)    
-            ax.plot(inter[0], inter[1])      
-            ax.scatter(inter[0], inter[1])
+            try:
+                leftFitPara = fitLinear(event, (values['ll_slider']/faktor,values['lr_slider']/faktor), data, ax, 'red')
+                rightFitPara = fitLinear(event, (values['rl_slider']/faktor,values['rr_slider']/faktor), data, ax, 'green')
+                if leftFit:
+                    leftFit[0].set_ydata(LinearFit(data.index,*leftFitPara))
+                    rightFiinter_line,inter_line,t[0].set_ydata(LinearFit(data.index,*rightFitPara))
+                else:
+                    leftFit, = ax.plot(data.index, LinearFit(data.index, *leftFitPara), color = 'red', label='fit: a=%5.3f, b=%5.3f ' % tuple(leftFitPara))
+                    rightFit, = ax.plot(data.index, LinearFit(data.index, *rightFitPara), color = 'green', label='fit: a=%5.3f, b=%5.3f ' % tuple(rightFitPara))
+                inter = interpolate(data, ax)    
+                inter_line, = ax.plot(inter[0], inter[1])      
+                inter_dot = ax.scatter(inter[0], inter[1])
+            except TypeError as error:
+                if str(error) == 'Improper input: N=2 must not exceed M=0':
+                    print('Please select the appropriate limits for the fit')
+                    pass
+                else:
+                    print("Error:", sys.exc_info()[0])
+                    raise
         if event == 'Finde Fermi Edge':
             try:
-                finde_edge(inter,leftFitPara,rightFitPara,ax)
+                fermi_edge_plot, sexteen_plot, eigthy4_plot = finde_edge(inter,leftFitPara,rightFitPara,ax,window)
             except:
                 print("Error:", sys.exc_info()[0]) 
                 raise
-        plt.legend()
         plt.draw()
-        # if event == 'Fit-Fermi':
-        #     try:
-        #         keys = ['E_f','B','S','T']
-        #         p0=[values.get(key) for key in keys]
-        #         print(p0)
-        #         event, tmp_values = fitFermi(event, data, ax, p0)
-        #         values.update(values)
-        #     except:
-        #         print("Error:", sys.exc_info()[0])
-        #         pass
-        #     keys = ['E_f','B','S','T']
-        #     E_f, B, S, T = [values.get(key) for key in keys]#['16.89','5000', '200000', '10']
-        #     window.FindElement('E_f').Update(str(E_f))
-        #     window.FindElement('B').Update(str(B))
-        #     window.FindElement('S').Update(str(S))
-        #     window.FindElement('T').Update(str(T))
+        if event == 'Cancel' or event is None:    # be nice to your user, always have an exit from your form
+            line1.remove()
+            line2.remove()
+            line3.remove()
+            line4.remove()
+            if inter_line: inter_line.remove()
+            if inter_dot: inter_dot.remove()
+            if fermi_edge_plot: fermi_edge_plot.remove()
+            if sexteen_plot: sexteen_plot.remove()
+            if eigthy4_plot: eigthy4_plot.remove()
+            if leftFit: leftFit.remove()
+            if rightFit: rightFit.remove()
+            break
+     
     window.Close()
     return event, values
 
-def finde_edge(interPolData, fit1Para, fit2Para, ax):
+def finde_edge(interPolData, fit1Para, fit2Para, ax, window):
     for i in range(0, len(interPolData[0])):
         diff = 0.5*(abs(LinearFit(interPolData[0][i],*fit1Para)-LinearFit(interPolData[0][i],*fit2Para)))
-        toProof = interPolData[1][i] - LinearFit(interPolData[0][i],*fit2Para)
-        if toProof <= diff:
-            ax.axvline(x=interPolData[0][i], color = 'k', dashes = (5, 1))
+        fermi_edge = interPolData[1][i] - LinearFit(interPolData[0][i],*fit2Para)
+        if fermi_edge <= diff:
+            fermi_edge_plot = ax.axvline(x=interPolData[0][i], color = 'k', dashes = (5, 1))
+            fermi_edge_x = interPolData[0][i]
             plt.draw()
+            window.FindElement('fermi_edge').Update(str(fermi_edge_x))
+            break
+    for i in range(0, len(interPolData[0])):
+        diff = 0.16*(abs(LinearFit(interPolData[0][i],*fit1Para)-LinearFit(interPolData[0][i],*fit2Para)))
+        sexteen = interPolData[1][i] - LinearFit(interPolData[0][i],*fit2Para)
+        if sexteen <= diff:
+            sexteen_x = interPolData[0][i]
+            sexteen_plot = ax.axvline(x=interPolData[0][i], color = 'k', dashes = (5, 1))
+            plt.draw()
+            break
+    for i in range(0, len(interPolData[0])):
+        diff = 0.84*(abs(LinearFit(interPolData[0][i],*fit1Para)-LinearFit(interPolData[0][i],*fit2Para)))
+        eigthy4 = interPolData[1][i] - LinearFit(interPolData[0][i],*fit2Para)
+        if eigthy4 <= diff:
+            eigthy4_plot = ax.axvline(x=interPolData[0][i], color = 'k', dashes = (5, 1))
+            eigthy4_x = interPolData[0][i]
+            plt.draw()
+            window.FindElement('resolution').Update(str(abs(eigthy4_x-sexteen_x)))
+            break
+    return fermi_edge_plot, sexteen_plot, eigthy4_plot 
 
 def fitPanel_old(event, ax, data):
     layout = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
