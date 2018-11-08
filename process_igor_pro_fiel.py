@@ -3,12 +3,14 @@ import numpy as np
 import sys
 from matplotlib.widgets import Button
 import pandas as pd
+from pandas import read_pickle
 from scipy import constants as const
 from scipy.interpolate import interp1d
 import workingFunctions as wf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
-import tkinter as Tk
+import tkinter as Tk 
 import matplotlib.backends.tkagg as tkagg
+#import mymodule
 
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
@@ -23,25 +25,15 @@ import PySimpleGUI as sg
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-
-
 # from PyQt5 import QtGui
 # from PyQt5 import QtCore
 # from PyQt5.QtCore import Qt
 # plt.switch_backend('Qt5Agg') #### macht segfault hmmmmmmm
 
-"""
-Proceding of ARPES data sets from OMICON SES Software.
-"""
+sg.SetOptions(auto_size_text = False)
 
-__author__ = "Alexander Kononov"
-__copyright__ = "Royalty-free"
-__credits__ = ""
-__license__ = "GPL"
-__version__ = "0.2"
-__maintainer__ = "Alexander Kononov"
-__email__ = "alexander.kononov@tu-dortmund.de"
-__status__ = "Production"
+def pklImporter(path):
+    return
 
 def sliceData(data, xlim = None, ylim = None):
     if xlim:
@@ -61,7 +53,7 @@ def sliceData(data, xlim = None, ylim = None):
 
 def reduceByX(data):
     '''Integriere Daten entlang einzelnen Energiewerten '''
-    #return np.add.reduce(data.T)
+    #return np.add.reduce(data.T
     return data.apply(np.sum, axis = 1)
 
 def reduceByY(data):
@@ -136,8 +128,9 @@ def plotData(data,title = None):
     button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
     button2pos._button = bcut2
     button3pos._button = bcut3
+    plt.show()
     #im = plt.gcf()
-    return im
+    #return im
 
 def on_clickInfo(event,data):
     temp = []
@@ -216,8 +209,13 @@ def fitPanel(event, ax, data):
     line2, = ax.plot((leftboundStep, leftboundStep),y_lim, color = 'r', marker = '<', alpha=0.5)
     line3, = ax.plot((rightboundStep, rightboundStep),y_lim, color = 'g', marker = '>', alpha=0.5)
     line4, = ax.plot((rightbound, rightbound),y_lim, color = 'g', marker = '<', alpha=0.5)
-    leftFit =[]
-    rightFit = []
+    leftFit = None              # Initiate some elements, important for Canceling of fit-panel 
+    rightFit = None
+    inter_line = None
+    inter_dot = None
+    fermi_edge_plot = None
+    sexteen_plot = None
+    eigthy4_plot = None
     while True:
         event, values = window.Read()
         line1.set_xdata((values['ll_slider']/faktor,values['ll_slider']/faktor))
@@ -233,8 +231,14 @@ def fitPanel(event, ax, data):
                 leftFitPara = fitLinear(event, (values['ll_slider']/faktor,values['lr_slider']/faktor), data, ax, 'red')
                 rightFitPara = fitLinear(event, (values['rl_slider']/faktor,values['rr_slider']/faktor), data, ax, 'green')
                 if leftFit:
-                    leftFit[0].set_ydata(LinearFit(data.index,*leftFitPara))
-                    rightFiinter_line,inter_line,t[0].set_ydata(LinearFit(data.index,*rightFitPara))
+                    leftFit.set_ydata(LinearFit(data.index,*leftFitPara))
+                    rightFit.set_ydata(LinearFit(data.index,*rightFitPara))
+                    if inter_line: inter_line.remove()
+                    if inter_dot: inter_dot.remove()
+                    if fermi_edge_plot: fermi_edge_plot.remove()
+                    if sexteen_plot: sexteen_plot.remove()
+                    if eigthy4_plot: eigthy4_plot.remove()
+            
                 else:
                     leftFit, = ax.plot(data.index, LinearFit(data.index, *leftFitPara), color = 'red', label='fit: a=%5.3f, b=%5.3f ' % tuple(leftFitPara))
                     rightFit, = ax.plot(data.index, LinearFit(data.index, *rightFitPara), color = 'green', label='fit: a=%5.3f, b=%5.3f ' % tuple(rightFitPara))
@@ -421,6 +425,56 @@ def saveReduceData(event, reddata):
     event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
     reddata.to_pickle(filename)
     return event
+
+def allMethodsOf(object):
+    return [method_name for method_name in dir(object)
+            if callable(getattr(object, method_name))]
+def main():
+    """
+    Proceding of ARPES data sets from OMICON SES Software.
+    """
+    __author__ = "Alexander Kononov"
+    __copyright__ = "Royalty-free"
+    __credits__ = ""
+    __license__ = ""
+    __version__ = "1.5"
+    __maintainer__ = "Alexander Kononov"
+    __email__ = "alexander.kononov@tu-dortmund.de"
+    __status__ = "Production"
+
+     # ------ Menu Definition ------ #      
+    menu_def = [['File', ['Open', 'Exit'  ]],      
+                ['Help', 'About...'], ]      
+
+    # ------ GUI Defintion ------ #      
+    layout = [      
+        [sg.Menu(menu_def, )],      
+        [sg.Output(size=(60, 20))]      
+             ]      
+
+    window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
+    win = window.Finalize()
+    # ------ Loop & Process button menu choices ------ #      
+    while True:      
+        event, values = window.Read()      
+        if event == None or event == 'Exit':      
+            break      
+        # ------ Process menu choices ------ #      
+        if event == 'About...':      
+            sg.Popup(main.__doc__+'\n Author: '+__author__+'\n E-mail: '+__email__+'\n Copyright: '+\
+                     __copyright__+'\n License: '+__license__+'\n Version: '+\
+                     __version__+'\n Status: '+__status__)      
+        elif event == 'Open':      
+            filename = sg.PopupGetFile('file to open', no_window=True)      
+            try:
+                if filename: print(filename)
+                data = read_pickle(filename)
+                plotData(data)#, title = filename.split('/')[:-2])
+            except AttributeError:
+                print('Open file function was aborted.')
+                pass
+if __name__ == '__main__':
+    main()
 
 # path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
 # a = wf.loadObj(path +'10001.pkl')
