@@ -472,52 +472,5 @@ def main():
 if __name__ == '__main__':
     main()
 
-# path = '/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180427/'
-# a = wf.loadObj(path +'10001.pkl')
-# aRedRef = reduceByX(sliceData(a[1], ylim =[-5,5])) 
-# #aRed.plot(yerr = aRed.apply(np.sqrt))
-# counter = 0
-# for i in wf.fileList(path):
-#     counter += 1
-#     fpath = path+i
-#     a = wf.loadObj(fpath)
-#     aRed = reduceByX(sliceData(a[1], ylim =[-5,5]))
-#     #(aRedRef-aRed).plot()                 # yerr = aRed.apply(np.sqrt)
-#     aRed.plot(label=i)
-#     if counter == 2:
-#         break
-# plt.ylabel('Counts')
-# plt.legend()
-# plt.show()
 
-
-# info,data = readIgorTxt(path)
-# print data.info()
-# xlim=[16.53,16.83]
-# print [np.where(x>=xlim[0])[0][0], np.where(x>=xlim[1])[0][0]]
-# print [x[np.where(x>=xlim[0])[0][0]], x[np.where(x>=xlim[1])[0][0]]]
-# exit()
-# im = plotData(data, title = path[:-4])
-# plt.scatter(x=data.index.values,y=data.columns.values)
-# data2 = sliceData(data, xlim = [16.8,17.0], ylim = [-2,1])
-# print data.info()
-# print "Energies="+str(len(data.index.values))
-# print "mm="+str(len(data.columns.values))
-# print data2.info()
-
-# im = plotData(data2, title = path[:-4])
-# plt.figure()
-# asd = reduceByX(data2)
-# asd.plot(yerr = asd.apply(np.sqrt))
-
-# xred,yred = reduceByX(data2)
-# plt.errorbar(xred,yred)
-# plt.figure()
-# plt.errorbar(reduceByY(data2))
-
-# ylim = [-1,1]
-# x,y,data = sliceData(x,y,sliceY, ylim = ylim)
-# data = reduceByX(data)
-# xlim = [15.9,16.1]
-# plt.plot(x,data)
 
