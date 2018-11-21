@@ -10,7 +10,8 @@ import workingFunctions as wf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
 import matplotlib.backends.tkagg as tkagg
-#import mymodule
+import matplotlib._pylab_helpers
+
 
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
@@ -61,21 +62,6 @@ def reduceByY(data):
     #return np.add.reduce(data)
     return data.apply(np.sum, axis = 0)
 
-def plotData_old(data,title = None):
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    if title:
-        fig.canvas.set_window_title(title)
-    else:
-        fig.canvas.set_window_title('Data_Set')
-    x,y = data.index.values, data.columns.values
-    extent = np.min(x), np.max(x), np.min(y), np.max(y)
-    im = plt.imshow(data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-    plt.xlabel(data.index.name)
-    plt.ylabel(data.columns.name)
-    plt.colorbar()
-    plt.tight_layout()
-    return im
 
 def plotRed(dataSet,info, currentPlot = False):
     if currentPlot:
@@ -151,7 +137,23 @@ def grab_dic(data):
             for k, v in ele.items():
                 info_list.append(k+' : '+v+'\n')
     return ' '.join(info_list)
-      
+
+def on_clickY(event, data):
+    print('Start to Integrate Y')
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+    x_lim = ax.get_xlim()
+    y_lim = ax.get_ylim()
+    digis = 3
+    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
+    button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+    bcut4 = Button(button4pos, 'Save', color=buttoncolor)
+    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
+    reducedData = reduceByY(slicedData)
+    ax2.plot(reducedData, 'ko')
+    plt.show()
+    bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
+    button4pos._button = bcut4
     
 def on_clickX(event,data):
     print('Start to Integrate X')
@@ -173,7 +175,17 @@ def on_clickX(event,data):
     buttonFit.on_clicked(lambda event:fitPanel(event, ax2, reducedData))
     button3pos._button = bcut3 #without this the garbage collector destroyes the button
     buttonFitpos._button = buttonFit
+    figures=[manager.canvas.figure
+         for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
+    for i in figures:
+        try:
+            axies= i.get_axes()
+            for j in axies:
+                print(j.get_title())
+        except:
+            pass
     plt.show()
+    
 
 def fitPanel(event, ax, data):
     x_lim = ax.get_xlim()
@@ -404,22 +416,6 @@ def interpolate(data, ax, xstep = None):
     newx = np.linspace(x_lim[0], x_lim[1], num=xstep*len(data.index[mask]), endpoint=True)
     return newx, f(newx)
 
-def on_clickY(event, data):
-    print('Start to Integrate Y')
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    x_lim = ax.get_xlim()
-    y_lim = ax.get_ylim()
-    digis = 3
-    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
-    button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-    bcut4 = Button(button4pos, 'Save', color=buttoncolor)
-    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
-    reducedData = reduceByY(slicedData)
-    ax2.plot(reducedData, 'ko')
-    plt.show()
-    bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
-    button4pos._button = bcut4
 
 def saveReduceData(event, reddata):
     event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
@@ -465,11 +461,11 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True)      
+            filename = sg.PopupGetFile('file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
             try:
                 if filename: print(filename)
                 data = read_pickle(filename)
-                plotData(data)#, title = filename.split('/')[:-2])
+                plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
             except AttributeError:
                 print('Open file function was aborted.')
                 pass
