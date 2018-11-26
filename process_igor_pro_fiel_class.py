@@ -36,17 +36,20 @@ class Uphos:
     def __init__(self, path):
         try:
             if path.endswith('.txt'):
+                print('I working on %s' % path)
                 self.path = path 
-                self.data = readIgorTxt(path)
+                self.data = self.readIgorTxt()
             else:
+                print('I working on %s' %  path)
                 self.data = read_pickle(path)
         except:
             print ('Can not read file: %s' % self.path )
-
+            raise
+        
     def get_data(self):
         return self.data
     
-    def readIgorTxt(igor_data_path):
+    def readIgorTxt(self):
         """
         Convert data points from Igor Pro generated .txt file.
         Return: 
@@ -62,7 +65,7 @@ class Uphos:
         dimTwo = []
         data = []                       # Each line is 'vertical' slice by one certan Enery 
         data_field_trigger = False
-        with open(igor_data_path) as igor_data:
+        with open(self.path) as igor_data:
             for line in igor_data:
                 if not data_field_trigger and 'Dimension' and 'scale' in line: 
                     dim_dummy = line.split('=')
@@ -82,24 +85,24 @@ class Uphos:
                     str_list = line.strip().split(' ')
                     str_list = list(filter(None, str_list)) # erase empty strings from list
                     data.append(str_list)
-                    data = list(filter(None, data)) # some how one of the elements is empty, erase them!
-                    del data[0]             # remove first line because it is a string e.g.'[Data 1]' 
+                    self.data = list(filter(None, data)) # some how one of the elements is empty, erase them!
+                    del self.data[0]             # remove first line because it is a string e.g.'[Data 1]' 
                     dimOne = np.asfarray(dimOne)
                     dimTwo = np.asfarray(dimTwo)
             for i in range(0,len(data)):
                 #data[i] = np.asfarray(data[i][1:])
-                data[i] = np.asfarray(data[i])
-                data = np.asfarray(data)
-                data = pd.DataFrame(data=data)
-                data = data.set_index([0])
-                data.columns = dimTwo
+                self.data[i] = np.asfarray(data[i])
+                self.data = np.asfarray(data)
+                self.data = pd.DataFrame(data=data)
+                self.data = data.set_index([0])
+                self.data.columns = dimTwo
                 #data = data.to_panel()
             info_dic = {}
             for i in info:
                 if 'Dimension 1 name' in i:
-                    data.index.name = i.split('=')[1]
+                    self.data.index.name = i.split('=')[1]
                 if 'Dimension 2 name' in i:
-                    data.columns.name = i.split('=')[1] 
+                    self.data.columns.name = i.split('=')[1] 
                 if i == '':
                     continue
                 if i.startswith('[') and i.endswith(']'):
@@ -108,9 +111,9 @@ class Uphos:
                     continue
                 sub_item = i.split('=' , 1)
                 info_dic[curent_item][sub_item[0]] = sub_item[1]
-            return(info_dic, data)
+            self.data = (info_dic, self.data)
 
-    def plotData(self, data, title = None):
+    def plotData(self, title = None):
         fig = plt.figure()
         # cid = fig.canvas.mpl_connect('resize_event', onresize)
         global ax
@@ -119,11 +122,11 @@ class Uphos:
             fig.canvas.set_window_title(title)
         else:
             fig.canvas.set_window_title('Data_Set')
-        x,y = data[1].index.values, data[1].columns.values
+        x,y = self.data[1].index.values, self.data[1].columns.values
         extent = np.min(x), np.max(x), np.min(y), np.max(y)
-        im = plt.imshow(data[1].T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-        plt.xlabel(data[1].index.name)
-        plt.ylabel(data[1].columns.name)
+        im = plt.imshow(self.data[1].T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+        plt.xlabel(self.data[1].index.name)
+        plt.ylabel(self.data[1].columns.name)
         plt.colorbar()
         plt.tight_layout()
         button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
@@ -132,9 +135,9 @@ class Uphos:
         bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
         bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
         bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-        bcut1.on_clicked(lambda event: on_clickX(event, data[1]))
-        bcut2.on_clicked(lambda event: on_clickY(event, data[1]))
-        bcut3.on_clicked(lambda event: on_clickInfo(event, data[0]))
+        bcut1.on_clicked(lambda event: on_clickX(event, self.data[1]))
+        bcut2.on_clicked(lambda event: on_clickY(event, self.data[1]))
+        bcut3.on_clicked(lambda event: on_clickInfo(event, self.data[0]))
         button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
         button2pos._button = bcut2
         button3pos._button = bcut3
@@ -198,11 +201,11 @@ buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
 
 
 def on_clickInfo(event,data):
-    temp = []
-    dictlist = []
-    for key, value in data.items():
-        temp = [key,value]
-        dictlist.append(temp)
+    # temp = []
+    # dictlist = []
+    # for key, value in data.items():
+    #     temp = [key,value]
+    #     dictlist.append(temp)
     # event = sg.Window('Info'). Layout([[sg.Listbox(values=dictlist,size=(40, 20))],[sg.Cancel()] ]).Read()
     # event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline(dictlist,size=(80, 10))],[sg.Cancel()] ]).Read()
     event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(data)],size=(80, 10))],[sg.Cancel()]]).Read()    
@@ -540,12 +543,12 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
+            filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
             try:
                 if filename: print(filename)
                 plt.ion()
                 experiment = Uphos(filename)
-                experiment.plotData(experiment.data)
+                experiment.plotData()
                 plt.show()
                 # data = read_pickle(filename)
                 # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
