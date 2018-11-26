@@ -32,6 +32,116 @@ import matplotlib.pyplot as plt
 # plt.switch_backend('Qt5Agg') #### macht segfault hmmmmmmm
 
 sg.SetOptions(auto_size_text = False)
+class Uphos:
+    def __init__(self, path):
+        try:
+            if path.endswith('.txt'):
+                self.path = path 
+                self.data = readIgorTxt(path)
+            else:
+                self.data = read_pickle(path)
+        except:
+            print ('Can not read file: %s' % self.path )
+
+    def get_data(self):
+        return self.data
+    
+    def readIgorTxt(igor_data_path):
+        """
+        Convert data points from Igor Pro generated .txt file.
+        Return: 
+        Info - list
+        dimOne - 1d numpy array: Kinetic Energy
+        dimTwo - 1d numpy array: Coordinates (Transmition Mode) or angles (ARPES) 
+        data - 2d numpy array: Each element of array represents a slice for certain 
+               Energy along dimTwo (Coordinates or angles). Attention! First element
+               is the Energy of a slice.   
+        """
+        info = []
+        dimOne = []
+        dimTwo = []
+        data = []                       # Each line is 'vertical' slice by one certan Enery 
+        data_field_trigger = False
+        with open(igor_data_path) as igor_data:
+            for line in igor_data:
+                if not data_field_trigger and 'Dimension' and 'scale' in line: 
+                    dim_dummy = line.split('=')
+                    if [int(s) for s in dim_dummy[0].split() if s.isdigit()][0] == 1:
+                        str_list = dim_dummy[1].strip().split(' ')
+                        str_list = list(filter(None, str_list)) # erase empty strings from list
+                        dimOne.extend(str_list)
+                    else:
+                        str_list = dim_dummy[1].strip().split(' ')
+                        str_list = list(filter(None, str_list)) # erase empty strings from list
+                        dimTwo.extend(str_list)
+                if not data_field_trigger and not 'scale' in line:
+                    info.append(line.strip())
+                if 'Data' in line:
+                    data_field_trigger = True
+                if data_field_trigger:
+                    str_list = line.strip().split(' ')
+                    str_list = list(filter(None, str_list)) # erase empty strings from list
+                    data.append(str_list)
+                    data = list(filter(None, data)) # some how one of the elements is empty, erase them!
+                    del data[0]             # remove first line because it is a string e.g.'[Data 1]' 
+                    dimOne = np.asfarray(dimOne)
+                    dimTwo = np.asfarray(dimTwo)
+            for i in range(0,len(data)):
+                #data[i] = np.asfarray(data[i][1:])
+                data[i] = np.asfarray(data[i])
+                data = np.asfarray(data)
+                data = pd.DataFrame(data=data)
+                data = data.set_index([0])
+                data.columns = dimTwo
+                #data = data.to_panel()
+            info_dic = {}
+            for i in info:
+                if 'Dimension 1 name' in i:
+                    data.index.name = i.split('=')[1]
+                if 'Dimension 2 name' in i:
+                    data.columns.name = i.split('=')[1] 
+                if i == '':
+                    continue
+                if i.startswith('[') and i.endswith(']'):
+                    info_dic[i] = {} 
+                    curent_item = i
+                    continue
+                sub_item = i.split('=' , 1)
+                info_dic[curent_item][sub_item[0]] = sub_item[1]
+            return(info_dic, data)
+
+    def plotData(self, data, title = None):
+        fig = plt.figure()
+        # cid = fig.canvas.mpl_connect('resize_event', onresize)
+        global ax
+        ax = fig.add_subplot(111)
+        if title:
+            fig.canvas.set_window_title(title)
+        else:
+            fig.canvas.set_window_title('Data_Set')
+        x,y = data[1].index.values, data[1].columns.values
+        extent = np.min(x), np.max(x), np.min(y), np.max(y)
+        im = plt.imshow(data[1].T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+        plt.xlabel(data[1].index.name)
+        plt.ylabel(data[1].columns.name)
+        plt.colorbar()
+        plt.tight_layout()
+        button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
+        button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+        button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
+        bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
+        bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
+        bcut3 = Button(button3pos, 'Info', color=buttoncolor)
+        bcut1.on_clicked(lambda event: on_clickX(event, data[1]))
+        bcut2.on_clicked(lambda event: on_clickY(event, data[1]))
+        bcut3.on_clicked(lambda event: on_clickInfo(event, data[0]))
+        button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
+        button2pos._button = bcut2
+        button3pos._button = bcut3
+        plt.draw()
+        #im = plt.gcf()
+        #return im
+
 
 def pklImporter(path):
     return
@@ -86,37 +196,6 @@ def plotRed(dataSet,info, currentPlot = False):
 
 buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
 
-def plotData(data,title = None):
-    fig = plt.figure()
-    # cid = fig.canvas.mpl_connect('resize_event', onresize)
-    global ax
-    ax = fig.add_subplot(111)
-    if title:
-        fig.canvas.set_window_title(title)
-    else:
-        fig.canvas.set_window_title('Data_Set')
-    x,y = data[1].index.values, data[1].columns.values
-    extent = np.min(x), np.max(x), np.min(y), np.max(y)
-    im = plt.imshow(data[1].T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-    plt.xlabel(data[1].index.name)
-    plt.ylabel(data[1].columns.name)
-    plt.colorbar()
-    plt.tight_layout()
-    button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
-    button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-    button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
-    bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
-    bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
-    bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-    bcut1.on_clicked(lambda event: on_clickX(event, data[1]))
-    bcut2.on_clicked(lambda event: on_clickY(event, data[1]))
-    bcut3.on_clicked(lambda event: on_clickInfo(event, data[0]))
-    button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
-    button2pos._button = bcut2
-    button3pos._button = bcut3
-    plt.show()
-    #im = plt.gcf()
-    #return im
 
 def on_clickInfo(event,data):
     temp = []
@@ -184,7 +263,7 @@ def on_clickX(event,data):
                 print(j.get_title())
         except:
             pass
-    plt.show()
+    plt.draw()
     
 
 def fitPanel(event, ax, data):
@@ -464,11 +543,16 @@ def main():
             filename = sg.PopupGetFile('file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
             try:
                 if filename: print(filename)
-                data = read_pickle(filename)
-                plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
+                plt.ion()
+                experiment = Uphos(filename)
+                experiment.plotData(experiment.data)
+                plt.show()
+                # data = read_pickle(filename)
+                # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
             except AttributeError:
                 print('Open file function was aborted.')
-                pass
+                raise
+                #pass
 if __name__ == '__main__':
     main()
 

@@ -11,7 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
 import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
-
+import dataToPickle as dtp
 
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
@@ -461,13 +461,16 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
+            filename = sg.PopupGetFile(r'file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
             try:
-                if filename: print(filename)
-                data = read_pickle(filename)
+                if filename: print(r'read: ' + filename.split('/')[-1])
+                if filename.endswith('.txt'):
+                    data = dtp.readIgorTxt(filename)
+                else:
+                    data = read_pickle(filename)
                 plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
-            except AttributeError:
-                print('Open file function was aborted.')
+            except:
+                print('\tOpen file function was aborted.')
                 pass
 if __name__ == '__main__':
     main()
