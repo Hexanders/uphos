@@ -38,16 +38,17 @@ class Uphos:
             if path.endswith('.txt'):
                 print('I working on %s' % path)
                 self.path = path 
-                self.data = self.readIgorTxt()
+                self.info, self.data = self.readIgorTxt()
             else:
                 print('I working on %s' %  path)
-                self.data = read_pickle(path)
+                self.path = path
+                self.nfo, self.data = read_pickle(path)
         except:
-            print ('Can not read file: %s' % self.path )
+            print ('Can not read file: %s' % path )
             raise
         
     def get_data(self):
-        return self.data
+        print(data)
     
     def readIgorTxt(self):
         """
@@ -122,11 +123,11 @@ class Uphos:
             fig.canvas.set_window_title(title)
         else:
             fig.canvas.set_window_title('Data_Set')
-        x,y = self.data[1].index.values, self.data[1].columns.values
+        x,y = self.data.index.values, self.data.columns.values
         extent = np.min(x), np.max(x), np.min(y), np.max(y)
-        im = plt.imshow(self.data[1].T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-        plt.xlabel(self.data[1].index.name)
-        plt.ylabel(self.data[1].columns.name)
+        im = plt.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+        plt.xlabel(self.data.index.name)
+        plt.ylabel(self.data.columns.name)
         plt.colorbar()
         plt.tight_layout()
         button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
@@ -135,45 +136,149 @@ class Uphos:
         bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
         bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
         bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-        bcut1.on_clicked(lambda event: on_clickX(event, self.data[1]))
-        bcut2.on_clicked(lambda event: on_clickY(event, self.data[1]))
-        bcut3.on_clicked(lambda event: on_clickInfo(event, self.data[0]))
+        bcut1.on_clicked(lambda event: self.on_clickX(event, self.data))
+        bcut2.on_clicked(lambda event: self.on_clickY(event, self.data))
+        bcut3.on_clicked(lambda event: self.on_clickInfo(event))
         button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
         button2pos._button = bcut2
         button3pos._button = bcut3
-        plt.draw()
+        # plt.draw()
         #im = plt.gcf()
-        #return im
+        return im
+    
+    def reduceX(self, data = None):
+        '''Integriere Daten entlang einzelnen Energiewerten '''
+        if data is not None:
+            self.XredData = data.apply(np.sum, axis = 1)
+        else:
+            self.XredData = self.data.apply(np.sum, axis = 1) 
+        return self.XredData 
 
+    def reduceY(self, data):
+        '''Integriere Entlang Y.'''
+        #return np.add.reduce(data)
+        if data is not None:
+            self.YredData = data.apply(np.sum, axis = 0)
+        else:
+            self.YredData = self.data.apply(np.sum, axis = 0) 
+        return self.YredData
 
+    def fermiFct(self, x, E_f, b, s, T):
+        k_b = const.value(u'Boltzmann constant in eV/K')
+        return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
+
+    def fitFermi(self,  p0 =[0.0001,0.00001,0.0001,0.0001], x_lim = None , y_lim = None):
+        if x_lim == None:
+            x_lim = (self.XredData.index.values.min(), self.XredData.index.values.max())
+        if y_lim == None:
+            y_lim = (self.XredData.values.min(), self.XredData.values.max())
+        if x_lim is not None: mask = (self.XredData .index > x_lim[0]) & (self.XredData.index <= x_lim[1])
+        try:
+            p0=[float(x) for x in p0]
+        except:
+            print("Error:", sys.exc_info()[0])
+            # raise
+        try:
+            popt, pcov = curve_fit(self.fermiFct, self.XredData.index[mask], self.XredData.values[mask], p0=p0)
+        except:
+            print("Error:", sys.exc_info()[0])
+            raise
+        #fitPlot = ax.plot(data.index[mask], fermiFct(data.index[mask], *popt), 'r-', label='fit: E_f=%5.3f, T=%5.3f,b=%5.3f,c=%5.3f ' % tuple(popt))
+        #ax.set_xlim(x_lim)
+        #ax.set_ylim(y_lim)
+        #plt.show()
+        values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
+        return values
+
+    
+    def reduceByX(self, data):
+        '''Integriere Daten entlang einzelnen Energiewerten '''
+        #return np.add.reduce(data.T
+        return self.data.apply(np.sum, axis = 1)
+
+    def reduceByY(self, data):
+        '''Integriere Entlang Y.'''
+        #return np.add.reduce(data)
+        return self.data.apply(np.sum, axis = 0)
+
+    def on_clickY(self, event, data):
+        print('Start to Integrate Y')
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()
+        digis = 3
+        ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
+        button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+        bcut4 = Button(button4pos, 'Save', color=buttoncolor)
+        slicedData = self.sliceData(data, xlim = x_lim, ylim = y_lim)
+        reducedData = self.reduceByY(slicedData)
+        ax2.plot(reducedData, 'ko')
+        plt.show()
+        bcut4.self.on_clicked(lambda event:saveReduceData(event,reducedData))
+        button4pos._button = bcut4
+        plt.show()
+        
+    def sliceData(self, xlim = None, ylim = None):
+        if xlim:
+            x1 = self.data.index.values.argmin() if xlim[0] < self.data.index.values.min() else np.where(self.data.index.values>=xlim[0])[0][0]
+            x2 = self.data.index.values.argmax() if xlim[1] > self.data.index.values.max() else np.where(self.data.index.values>=xlim[1])[0][0] 
+        if ylim:
+            #hier funkt was nicht. Die Columns werden nicht richtig wiedergegeben.
+            y1 = self.data.columns.values.argmin() if ylim[0] < self.data.columns.values.min() else np.where(self.data.columns.values>=ylim[0])[0][0]
+            y2 = self.data.columns.values.argmax() if ylim[1] > self.data.columns.values.max() else np.where(self.data.columns.values>=ylim[1])[0][0]
+        if xlim and ylim:
+            self.data = self.data.iloc[x1:x2,y1:y2] 
+        elif xlim:
+            self.data = self.data.iloc[x1:x2,:]
+        elif ylim:
+            self.data = self.data.iloc[:,y1:y2]
+        #return data
+
+    def on_clickX(self, event,data):
+        print('Start to Integrate X')
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()
+        digis = 3
+        ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
+        slicedData = self.sliceData(data, xlim = x_lim, ylim = y_lim)
+        reducedData = self.reduceX(slicedData)
+        #print(reducedData.values, type(reducedData), len(reducedData))
+        ax2.plot(reducedData, 'bo')
+        button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+        bcut3 = Button(button3pos, 'Save', color=buttoncolor)
+        buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
+        buttonFit = Button(buttonFitpos, 'Fit-Panel', color=buttoncolor)
+        bcut3.on_clicked(lambda event:self.saveReduceData(event, reducedData))
+        buttonFit.on_clicked(lambda event:fitPanel(event, ax2, reducedData))
+        button3pos._button = bcut3 #without this the garbage collector destroyes the button
+        buttonFitpos._button = buttonFit
+        figures=[manager.canvas.figure
+        for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
+        for i in figures:
+            try:
+                axies= i.get_axes()
+                for j in axies:
+                    print(j.get_title())
+            except:
+                pass
+        plt.show()
+        
+    def saveReduceData(self, event, reddata):
+        event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
+        reddata.to_pickle(filename)
+        return event
+    
+    def on_clickInfo(self, event):
+        event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(self.info)],size=(80, 10))],[sg.Cancel()]]).Read()   
+        return event
+
+    
 def pklImporter(path):
     return
 
-def sliceData(data, xlim = None, ylim = None):
-    if xlim:
-        x1 = data.index.values.argmin() if xlim[0] < data.index.values.min() else np.where(data.index.values>=xlim[0])[0][0]
-        x2 = data.index.values.argmax() if xlim[1] > data.index.values.max() else np.where(data.index.values>=xlim[1])[0][0] 
-    if ylim:
-        #hier funkt was nicht. Die Columns werden nicht richtig wiedergegeben.
-        y1 = data.columns.values.argmin() if ylim[0] < data.columns.values.min() else np.where(data.columns.values>=ylim[0])[0][0]
-        y2 = data.columns.values.argmax() if ylim[1] > data.columns.values.max() else np.where(data.columns.values>=ylim[1])[0][0]
-    if xlim and ylim:
-        data = data.iloc[x1:x2,y1:y2] 
-    elif xlim:
-        data = data.iloc[x1:x2,:]
-    elif ylim:
-        data = data.iloc[:,y1:y2]
-    return data
-
-def reduceByX(data):
-    '''Integriere Daten entlang einzelnen Energiewerten '''
-    #return np.add.reduce(data.T
-    return data.apply(np.sum, axis = 1)
-
-def reduceByY(data):
-    '''Integriere Entlang Y.'''
-    #return np.add.reduce(data)
-    return data.apply(np.sum, axis = 0)
 
 
 def plotRed(dataSet,info, currentPlot = False):
@@ -200,16 +305,6 @@ def plotRed(dataSet,info, currentPlot = False):
 buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
 
 
-def on_clickInfo(event,data):
-    # temp = []
-    # dictlist = []
-    # for key, value in data.items():
-    #     temp = [key,value]
-    #     dictlist.append(temp)
-    # event = sg.Window('Info'). Layout([[sg.Listbox(values=dictlist,size=(40, 20))],[sg.Cancel()] ]).Read()
-    # event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline(dictlist,size=(80, 10))],[sg.Cancel()] ]).Read()
-    event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(data)],size=(80, 10))],[sg.Cancel()]]).Read()    
-    return event
 
 def grab_dic(data):
     #tmp_list = []
@@ -220,53 +315,7 @@ def grab_dic(data):
                 info_list.append(k+' : '+v+'\n')
     return ' '.join(info_list)
 
-def on_clickY(event, data):
-    print('Start to Integrate Y')
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    x_lim = ax.get_xlim()
-    y_lim = ax.get_ylim()
-    digis = 3
-    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
-    button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-    bcut4 = Button(button4pos, 'Save', color=buttoncolor)
-    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
-    reducedData = reduceByY(slicedData)
-    ax2.plot(reducedData, 'ko')
-    plt.show()
-    bcut4.on_clicked(lambda event:saveReduceData(event,reducedData))
-    button4pos._button = bcut4
     
-def on_clickX(event,data):
-    print('Start to Integrate X')
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    x_lim = ax.get_xlim()
-    y_lim = ax.get_ylim()
-    digis = 3
-    ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
-    slicedData = sliceData(data, xlim = x_lim, ylim = y_lim)
-    reducedData = reduceByX(slicedData)
-    #print(reducedData.values, type(reducedData), len(reducedData))
-    ax2.plot(reducedData, 'bo')
-    button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-    bcut3 = Button(button3pos, 'Save', color=buttoncolor)
-    buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
-    buttonFit = Button(buttonFitpos, 'Fit-Panel', color=buttoncolor)
-    bcut3.on_clicked(lambda event:saveReduceData(event, reducedData))
-    buttonFit.on_clicked(lambda event:fitPanel(event, ax2, reducedData))
-    button3pos._button = bcut3 #without this the garbage collector destroyes the button
-    buttonFitpos._button = buttonFit
-    figures=[manager.canvas.figure
-         for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
-    for i in figures:
-        try:
-            axies= i.get_axes()
-            for j in axies:
-                print(j.get_title())
-        except:
-            pass
-    plt.draw()
     
 
 def fitPanel(event, ax, data):
@@ -399,35 +448,6 @@ def finde_edge(interPolData, fit1Para, fit2Para, ax, window):
             break
     return fermi_edge_plot, sexteen_plot, eigthy4_plot 
 
-def fitPanel_old(event, ax, data):
-    layout = [[sg.Text(r'$g = B + S\times f(T,E_f,E)$\n $f(T,E_f,E) = [\exp{((E-E_f)/(k_b\cdot T))+1}]^{-1}$')],    
-                [sg.Text(r'E_f'), sg.InputText('16.89',key='E_f')],
-                [sg.Text(r'B'), sg.InputText('5000',key='B')],
-                [sg.Text(r'S'), sg.InputText('200000',key='S')],
-                [sg.Text(r'T'), sg.InputText('10',key='T')],      
-                [sg.ReadButton('Fit'), sg.Cancel()],
-    ]
-    window = sg.Window('Fit Parameter',force_top_level = True)
-    window.Layout(layout)
-    window.Finalize()
-    while True:      
-        event2, values = window.Read()
-        if event2 is None:      
-            break
-        if event2 == 'Fit':
-            try:
-                p0 = values.values('E_f','B','S','T')
-                print(p0)
-                event, values = fitFermi(event, data, ax, p0)
-            except:
-                print("Error:", sys.exc_info()[0])
-                raise
-        E_f, B, S, T = values#['16.89','5000', '200000', '10']
-        window.FindElement('E_f').Update(str(E_f))
-        window.FindElement('B').Update(str(B))
-        window.FindElement('S').Update(str(S))
-        window.FindElement('T').Update(str(T))
-    return event, values
 
 def fermiFct(x,E_f,b,s,T):
     k_b = const.value(u'Boltzmann constant in eV/K')
@@ -437,49 +457,14 @@ def LinearFit(x,a,b):
     return a*x+b
 
 def fitLinear(event, x_range, data, ax, color):
-    mask = (data.index > x_range[0]) & (data.index <= x_range[1])
-    
-    # try:
-    #     p0=[float(x) for x in p0]
-    # except:
-    #     print("Error:", sys.exc_info()[0])
-    #     raise
+    mask = (data.index > x_range[0]) & (data.index <= x_range[1])    
     try:
         popt, pcov = curve_fit(LinearFit, data.index[mask], data.values[mask])
     except:
         print("Error:", sys.exc_info()[0])
-        raise
-    #fitPlot = ax.plot(data.index, LinearFit(data.index, *popt), color = color, label='fit: a=%5.3f, b=%5.3f ' % tuple(popt))
+        #raise
     return popt
 
-def fitFermi(event, data, ax, p0):
-    x_lim = ax.get_xlim()
-    y_lim = ax.get_ylim()
-    mask = (data.index > x_lim[0]) & (data.index <= x_lim[1])
-    # print(data.values[mask][:,0], data.values[mask][:,1])
-    # print(len(data.index[mask]), len(data.values[mask]))
-    # print(type(data.index[mask]), type(data.values[mask]))
-    
-    try:
-        p0=[float(x) for x in p0]
-    except:
-        print("Error:", sys.exc_info()[0])
-        raise
-    try:
-        popt, pcov = curve_fit(fermiFct, data.index[mask], data.values[mask], p0=p0)
-    except:
-        print("Error:", sys.exc_info()[0])
-        raise
-    # if fitPlot:
-    #     print(fitPlot)
-    #     fitPlot.pop(0).remove()
-    fitPlot = ax.plot(data.index[mask], fermiFct(data.index[mask], *popt), 'r-', label='fit: E_f=%5.3f, T=%5.3f,b=%5.3f,c=%5.3f ' % tuple(popt))
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
-    plt.show()
-    #print('POPT:%s' % (popt))
-    values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
-    return event, values
 
 def interpolate(data, ax, xstep = None):
     '''
@@ -499,65 +484,61 @@ def interpolate(data, ax, xstep = None):
     return newx, f(newx)
 
 
-def saveReduceData(event, reddata):
-    event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
-    reddata.to_pickle(filename)
-    return event
 
 def allMethodsOf(object):
     return [method_name for method_name in dir(object)
             if callable(getattr(object, method_name))]
-def main():
-    """
-    Proceding of ARPES data sets from OMICON SES Software.
-    """
-    __author__ = "Alexander Kononov"
-    __copyright__ = "Royalty-free"
-    __credits__ = ""
-    __license__ = ""
-    __version__ = "1.5"
-    __maintainer__ = "Alexander Kononov"
-    __email__ = "alexander.kononov@tu-dortmund.de"
-    __status__ = "Production"
+# def main():
+#     """
+#     Proceding of ARPES data sets from OMICON SES Software.
+#     """
+#     __author__ = "Alexander Kononov"
+#     __copyright__ = "Royalty-free"
+#     __credits__ = ""
+#     __license__ = ""
+#     __version__ = "1.5"
+#     __maintainer__ = "Alexander Kononov"
+#     __email__ = "alexander.kononov@tu-dortmund.de"
+#     __status__ = "Production"
 
-     # ------ Menu Definition ------ #      
-    menu_def = [['File', ['Open', 'Exit'  ]],      
-                ['Help', 'About...'], ]      
+#      # ------ Menu Definition ------ #      
+#     menu_def = [['File', ['Open', 'Exit'  ]],      
+#                 ['Help', 'About...'], ]      
 
-    # ------ GUI Defintion ------ #      
-    layout = [      
-        [sg.Menu(menu_def, )],      
-        [sg.Output(size=(60, 20))]      
-             ]      
+#     # ------ GUI Defintion ------ #      
+#     layout = [      
+#         [sg.Menu(menu_def, )],      
+#         [sg.Output(size=(60, 20))]      
+#              ]      
 
-    window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
-    win = window.Finalize()
-    # ------ Loop & Process button menu choices ------ #      
-    while True:      
-        event, values = window.Read()      
-        if event == None or event == 'Exit':      
-            break      
-        # ------ Process menu choices ------ #      
-        if event == 'About...':      
-            sg.Popup(main.__doc__+'\n Author: '+__author__+'\n E-mail: '+__email__+'\n Copyright: '+\
-                     __copyright__+'\n License: '+__license__+'\n Version: '+\
-                     __version__+'\n Status: '+__status__)      
-        elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
-            try:
-                if filename: print(filename)
-                plt.ion()
-                experiment = Uphos(filename)
-                experiment.plotData()
-                plt.show()
-                # data = read_pickle(filename)
-                # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
-            except AttributeError:
-                print('Open file function was aborted.')
-                raise
-                #pass
-if __name__ == '__main__':
-    main()
+#     window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
+#     win = window.Finalize()
+#     # ------ Loop & Process button menu choices ------ #      
+#     while True:      
+#         event, values = window.Read()      
+#         if event == None or event == 'Exit':      
+#             break      
+#         # ------ Process menu choices ------ #      
+#         if event == 'About...':      
+#             sg.Popup(main.__doc__+'\n Author: '+__author__+'\n E-mail: '+__email__+'\n Copyright: '+\
+#                      __copyright__+'\n License: '+__license__+'\n Version: '+\
+#                      __version__+'\n Status: '+__status__)      
+#         elif event == 'Open':      
+#             filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
+#             try:
+#                 if filename: print(filename)
+#                 plt.ion()
+#                 experiment = Uphos(filename)
+#                 experiment.plotData()
+#                 plt.show()
+#                 # data = read_pickle(filename)
+#                 # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
+#             except AttributeError:
+#                 print('Open file function was aborted.')
+#                 raise
+#                 #pass
+# if __name__ == '__main__':
+#     main()
 
 
 
