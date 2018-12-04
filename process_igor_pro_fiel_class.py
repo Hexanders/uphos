@@ -114,7 +114,7 @@ class Uphos:
                 info_dic[curent_item][sub_item[0]] = sub_item[1]
             self.data = (info_dic, self.data)
 
-    def plotData(self, title = None):
+    def plotData(self, title = None, interactive = True):
         fig = plt.figure()
         # cid = fig.canvas.mpl_connect('resize_event', onresize)
         global ax
@@ -130,22 +130,54 @@ class Uphos:
         plt.ylabel(self.data.columns.name)
         plt.colorbar()
         plt.tight_layout()
-        button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
-        button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-        button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
-        bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
-        bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
-        bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-        bcut1.on_clicked(lambda event: self.on_clickX(event, self.data))
-        bcut2.on_clicked(lambda event: self.on_clickY(event, self.data))
-        bcut3.on_clicked(lambda event: self.on_clickInfo(event))
-        button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
-        button2pos._button = bcut2
-        button3pos._button = bcut3
-        # plt.draw()
-        #im = plt.gcf()
+        if interactive:
+            button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
+            button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+            button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
+            bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
+            bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
+            bcut3 = Button(button3pos, 'Info', color=buttoncolor)
+            bcut1.on_clicked(lambda event: self.on_clickX(event, self.data))
+            bcut2.on_clicked(lambda event: self.on_clickY(event, self.data))
+            bcut3.on_clicked(lambda event: self.on_clickInfo(event))
+            button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
+            button2pos._button = bcut2
+            button3pos._button = bcut3
         return im
-    
+
+    def plotOverviw(self, data = None):
+        if data is not None:
+            tmp_data = data
+        else:
+            tmp_data = self.data
+        fig = plt.figure(figsize=(10, 10))
+        grid = plt.GridSpec(4, 4, hspace=0.01, wspace=0.01)       
+        main_ax = fig.add_subplot(grid[1:4, :-1])       
+        x,y = tmp_data.index.values, tmp_data.columns.values
+        extent = np.min(x), np.max(x), np.min(y), np.max(y)
+        im = plt.imshow(tmp_data.T, extent = extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+        plt.xlabel(tmp_data.index.name)
+        plt.ylabel(tmp_data.columns.name)
+        main_xlim = plt.xlim()
+        main_ylim = plt.ylim()
+        cbar_ax = fig.add_axes([0.01, 0.95, 0.9, 0.05])
+        plt.colorbar(im, cax = cbar_ax, orientation='horizontal')     
+        y_int = fig.add_subplot(grid[1:4, -1])
+        y_int.get_yaxis().set_ticks([])
+        #plt.ticklabel_format(axis='x', style='sci',scilimits=(0,0), useMathText = True)
+        plt.ylim(main_ylim)
+        yred = self.reduceY(data = tmp_data)
+        plt.xticks(rotation='vertical')
+        plt.plot(yred.values, yred.index.values)
+        #x_int = fig.add_subplot(grid[-1, 1:])
+        x_int = fig.add_subplot(grid[0, :-1])
+        x_int.get_xaxis().set_ticks([])
+        #plt.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useMathText = True)
+        plt.xlim(main_xlim)
+        xred = self.reduceX(data = tmp_data)
+        plt.plot(xred)
+        return fig
+
     def reduceX(self, data = None):
         '''Integriere Daten entlang einzelnen Energiewerten '''
         if data is not None:
@@ -154,8 +186,8 @@ class Uphos:
             self.XredData = self.data.apply(np.sum, axis = 1) 
         return self.XredData 
 
-    def reduceY(self, data):
-        '''Integriere Entlang Y.'''
+    def reduceY(self, data = None):
+        '''Integritmp_dataere Entlang Y.'''
         #return np.add.reduce(data)
         if data is not None:
             self.YredData = data.apply(np.sum, axis = 0)
