@@ -11,7 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
 import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
-
+import lmfit
 
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
@@ -32,6 +32,10 @@ import matplotlib.pyplot as plt
 # plt.switch_backend('Qt5Agg') #### macht segfault hmmmmmmm
 
 sg.SetOptions(auto_size_text = False)
+# root = Tk.Tk()
+# screen_width = root.winfo_screenwidth()
+# screen_height = root.winfo_screenheight()
+
 class Uphos:
     def __init__(self, path):
         try:
@@ -198,9 +202,26 @@ class Uphos:
 
     def fermiFct(self, x, E_f, b, s, T):
         k_b = const.value(u'Boltzmann constant in eV/K')
-        return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
+        return b + s*(1./(np.exp((x-E_f)/(k_b*T))+1))
 
-    def fitFermi(self,  p0 =[0.0001,0.00001,0.0001,0.0001], x_lim = None , y_lim = None):
+    def fitFermi(self, a=16.9,b = 1.,c = 1. ,d =70., x_lim = None):
+        x = self.data.index
+        y = self.data.values
+        if x_lim is not None:
+            mask =  (x > x_lim[0]) & (x <= x_lim[1])
+            x = x[mask]
+            y = y[mask]
+        #mod = lmfit.models.ExponentialModel()
+        mod = lmfit.Model(self.fermiFct)
+        #pars = mod.guess(y, x=x) ###(x,E_f,b,s,T):
+        out = mod.fit(y,E_f = a, b = b, s = c , T = d, x=x)
+        print(out.fit_report())
+        #plt.plot(x, out.best_fit, 'k-')
+        #values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
+        return (x,out.best_fit)
+
+    
+    def fitFermi_old(self,  p0 =[0.0001,0.00001,0.0001,0.0001], x_lim = None , y_lim = None):
         if x_lim == None:
             x_lim = (self.XredData.index.values.min(), self.XredData.index.values.max())
         if y_lim == None:
@@ -276,7 +297,7 @@ class Uphos:
         y_lim = ax.get_ylim()
         digis = 3
         ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
-        slicedData = self.sliceData(data, xlim = x_lim, ylim = y_lim)
+        slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
         reducedData = self.reduceX(slicedData)
         #print(reducedData.values, type(reducedData), len(reducedData))
         ax2.plot(reducedData, 'bo')
@@ -297,7 +318,7 @@ class Uphos:
                     print(j.get_title())
             except:
                 pass
-        plt.show()
+        plt.draw()
         
     def saveReduceData(self, event, reddata):
         event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
@@ -374,11 +395,12 @@ def fitPanel(event, ax, data):
         sg.Spin(data.index,key='rl_spin',size=(10, 20), auto_size_text = True),
         sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit')],
-        [sg.ReadButton('Finde Fermi Edge'), sg.Text(r'Fermi edge [eV]'), sg.InputText(size =(10,20), key='fermi_edge'), sg.Text('16%-84% width [eV]'), sg.InputText(size =(10,20),  key = 'resolution')] ,
+        [sg.ReadButton('Finde Fermi Edge'), sg.Text(r'Fermi edge [eV]'), sg.InputText(size =(10,10), key='fermi_edge'), sg.Text('16%-84% width [eV]'), sg.InputText(size =(10,10),  key = 'resolution')] ,
+                [sg.ReadButton('Fit Fermi Function'), sg.Text(r'E_f:'),sg.InputText(size =(10,10), key = 'E_f'), sg.Text(r'b:'),sg.InputText(size =(10,10), key = 'b'),sg.Text(r's:'),sg.InputText(size =(10,10), key = 's'),sg.Text(r'T:'),sg.InputText(size =(10,10), key = 'T'),],
         [sg.Cancel()],
     ]
    
-    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number), grab_anywhere=False)
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number),  grab_anywhere=False)
     window.Layout(layout)
     window.Finalize()
     line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
@@ -428,6 +450,14 @@ def fitPanel(event, ax, data):
                 else:
                     print("Error:", sys.exc_info()[0])
                     raise
+        if event == 'Fit Fermi Function':
+            try:
+                xFit, yFit = experiment.fitFermi(data)  #####Hier noch die WERTE von GUI eintragen
+                ax.plot(xFit,yFit)
+            except:
+                print("Error:", sys.exc_info()[0]) 
+                raise
+            plt.draw()
         if event == 'Finde Fermi Edge':
             try:
                 fermi_edge_plot, sexteen_plot, eigthy4_plot = finde_edge(inter,leftFitPara,rightFitPara,ax,window)
@@ -521,57 +551,58 @@ def interpolate(data, ax, xstep = None):
 def allMethodsOf(object):
     return [method_name for method_name in dir(object)
             if callable(getattr(object, method_name))]
-# def main():
-#     """
-#     Proceding of ARPES data sets from OMICON SES Software.
-#     """
-#     __author__ = "Alexander Kononov"
-#     __copyright__ = "Royalty-free"
-#     __credits__ = ""
-#     __license__ = ""
-#     __version__ = "1.5"
-#     __maintainer__ = "Alexander Kononov"
-#     __email__ = "alexander.kononov@tu-dortmund.de"
-#     __status__ = "Production"
+def main():
+    """
+    Proceding of ARPES data sets from OMICON SES Software.
+    """
+    __author__ = "Alexander Kononov"
+    __copyright__ = "Royalty-free"
+    __credits__ = ""
+    __license__ = ""
+    __version__ = "1.5"
+    __maintainer__ = "Alexander Kononov"
+    __email__ = "alexander.kononov@tu-dortmund.de"
+    __status__ = "Production"
 
-#      # ------ Menu Definition ------ #      
-#     menu_def = [['File', ['Open', 'Exit'  ]],      
-#                 ['Help', 'About...'], ]      
+     # ------ Menu Definition ------ #      
+    menu_def = [['File', ['Open', 'Exit'  ]],      
+                ['Help', 'About...'], ]      
 
-#     # ------ GUI Defintion ------ #      
-#     layout = [      
-#         [sg.Menu(menu_def, )],      
-#         [sg.Output(size=(60, 20))]      
-#              ]      
+    # ------ GUI Defintion ------ #      
+    layout = [      
+        [sg.Menu(menu_def, )],      
+        [sg.Output(size=(60, 20))]      
+             ]      
 
-#     window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
-#     win = window.Finalize()
-#     # ------ Loop & Process button menu choices ------ #      
-#     while True:      
-#         event, values = window.Read()      
-#         if event == None or event == 'Exit':      
-#             break      
-#         # ------ Process menu choices ------ #      
-#         if event == 'About...':      
-#             sg.Popup(main.__doc__+'\n Author: '+__author__+'\n E-mail: '+__email__+'\n Copyright: '+\
-#                      __copyright__+'\n License: '+__license__+'\n Version: '+\
-#                      __version__+'\n Status: '+__status__)      
-#         elif event == 'Open':      
-#             filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
-#             try:
-#                 if filename: print(filename)
-#                 plt.ion()
-#                 experiment = Uphos(filename)
-#                 experiment.plotData()
-#                 plt.show()
-#                 # data = read_pickle(filename)
-#                 # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
-#             except AttributeError:
-#                 print('Open file function was aborted.')
-#                 raise
-#                 #pass
-# if __name__ == '__main__':
-#     main()
+    window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
+    win = window.Finalize()
+    # ------ Loop & Process button menu choices ------ #      
+    while True:      
+        event, values = window.Read()      
+        if event == None or event == 'Exit':      
+            break      
+        # ------ Process menu choices ------ #      
+        if event == 'About...':      
+            sg.Popup(main.__doc__+'\n Author: '+__author__+'\n E-mail: '+__email__+'\n Copyright: '+\
+                     __copyright__+'\n License: '+__license__+'\n Version: '+\
+                     __version__+'\n Status: '+__status__)      
+        elif event == 'Open':      
+            filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
+            try:
+                if filename: print(filename)
+                plt.ion()
+                global experiment 
+                experiment = Uphos(filename)
+                experiment.plotData()
+                plt.show()
+                # data = read_pickle(filename)
+                # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
+            except AttributeError:
+                print('Open file function was aborted.')
+                raise
+                #pass
+if __name__ == '__main__':
+    main()
 
 
 

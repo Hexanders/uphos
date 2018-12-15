@@ -12,6 +12,7 @@ import tkinter as Tk
 import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
 import dataToPickle as dtp
+import lmfit
 
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
@@ -211,10 +212,11 @@ def fitPanel(event, ax, data):
         sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit')],
         [sg.ReadButton('Finde Fermi Edge'), sg.Text(r'Fermi edge [eV]'), sg.InputText(size =(10,20), key='fermi_edge'), sg.Text('16%-84% width [eV]'), sg.InputText(size =(10,20),  key = 'resolution')] ,
-        [sg.Cancel()],
+        [sg.ReadButton('Fit Fermi Function'), sg.Text(r'E_f:'),sg.InputText(size =(10,20), key = 'E_f', default_text= '16.9'), sg.Text(r'b:'), sg.InputText(size =(10,20), default_text = '20000', key = 'b'),sg.Text(r's:'),sg.InputText(size =(10,20),default_text = '100', key = 's'),sg.Text(r'T:'),sg.InputText(size =(10,20),default_text = '300', key = 'T'),],
+        [sg.Cancel()],   ###E_f,b,s,T):
     ]
    
-    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number), grab_anywhere=False)
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number), grab_anywhere=False,auto_size_text=True)
     window.Layout(layout)
     window.Finalize()
     line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
@@ -269,7 +271,19 @@ def fitPanel(event, ax, data):
                 fermi_edge_plot, sexteen_plot, eigthy4_plot = finde_edge(inter,leftFitPara,rightFitPara,ax,window)
             except:
                 print("Error:", sys.exc_info()[0]) 
-                raise
+                pass
+        if event == 'Fit Fermi Function':
+            try:
+                xFit, yFit, out = fitFermi(data, float(values['E_f']), float(values['b']), float(values['s']), float(values['T']))  #####Hier noch die WERTE von GUI eintragen
+                fitParam = out.params.valuesdict()
+                window.FindElement('E_f').Update(str(fitParam['E_f']))
+                window.FindElement('b').Update(str(fitParam['b']))
+                window.FindElement('s').Update(str(fitParam['s']))
+                window.FindElement('T').Update(str(fitParam['T']))
+                ax.plot(xFit,yFit)
+            except:
+                print("Error:", sys.exc_info()[0]) 
+                pass
         plt.draw()
         if event == 'Cancel' or event is None:    # be nice to your user, always have an exit from your form
             line1.remove()
@@ -349,7 +363,7 @@ def fitPanel_old(event, ax, data):
 
 def fermiFct(x,E_f,b,s,T):
     k_b = const.value(u'Boltzmann constant in eV/K')
-    return b + s*(1./(np.exp((x-E_f)/(k_b*T))))
+    return b + s*(1./(np.exp((x-E_f)/(k_b*T))+1.))
 
 def LinearFit(x,a,b):
     return a*x+b
@@ -370,7 +384,20 @@ def fitLinear(event, x_range, data, ax, color):
     #fitPlot = ax.plot(data.index, LinearFit(data.index, *popt), color = color, label='fit: a=%5.3f, b=%5.3f ' % tuple(popt))
     return popt
 
-def fitFermi(event, data, ax, p0):
+def fitFermi(data , a=16.9, b = 1., c = 1. , d =70., x_lim = None):
+    x = data.index
+    y = data.values
+    if x_lim is not None:
+        mask =  (x > x_lim[0]) & (x <= x_lim[1])
+        x = x[mask]
+        y = y[mask]
+    #mod = lmfit.models.ExponentialModel()
+    mod = lmfit.Model(fermiFct)
+    #pars = mod.guess(y, x=x) ###(x,E_f,b,s,T):
+    out = mod.fit(y,E_f = a, b = b, s = c , T = d, x=x)
+    return (x,out.best_fit, out)
+
+def fitFermi_old(event, data, ax, p0):
     x_lim = ax.get_xlim()
     y_lim = ax.get_ylim()
     mask = (data.index > x_lim[0]) & (data.index <= x_lim[1])
@@ -461,7 +488,7 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile(r'file to open', no_window=True, default_path='~/home/kononovdesk/Documents/Promotion/UPS/Auswertung/Data_for_python/')      
+            filename = sg.PopupGetFile(r'file to open', no_window=True, default_path='../Data_for_python/')      
             try:
                 if filename: print(r'read: ' + filename.split('/')[-1])
                 if filename.endswith('.txt'):
