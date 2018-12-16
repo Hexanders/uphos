@@ -11,6 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
 import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
+import pprint
 import lmfit
 
 from bokeh.plotting import figure, show, ColumnDataSource
@@ -182,7 +183,7 @@ class Uphos:
         xred = self.reduceX(data = tmp_data)
         plt.plot(xred)
         return fig
-
+    
     def reduceX(self, data = None):
         '''Integriere Daten entlang einzelnen Energiewerten '''
         if data is not None:
@@ -204,13 +205,9 @@ class Uphos:
         k_b = const.value(u'Boltzmann constant in eV/K')
         return b + s*(1./(np.exp((x-E_f)/(k_b*T))+1))
 
-    def fitFermi(self, a=16.9,b = 1.,c = 1. ,d =70., x_lim = None):
-        x = self.data.index
-        y = self.data.values
-        if x_lim is not None:
-            mask =  (x > x_lim[0]) & (x <= x_lim[1])
-            x = x[mask]
-            y = y[mask]
+    def fitFermi(self, a=16.9,b = 1.,c = 1. ,d =70.):
+        x = self.XredData.index
+        y = self.XredData.values
         #mod = lmfit.models.ExponentialModel()
         mod = lmfit.Model(self.fermiFct)
         #pars = mod.guess(y, x=x) ###(x,E_f,b,s,T):
@@ -319,14 +316,20 @@ class Uphos:
             except:
                 pass
         plt.draw()
-        
+           
     def saveReduceData(self, event, reddata):
         event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
-        reddata.to_pickle(filename)
+        if filename.endswith('.pkl'):reddata.to_pickle(filename)
+        elif filename.endswith('.csv'):
+            f = open(filename, 'a')
+            f.write(pprint.pformat(self.info))
+            reddata.to_csv(f, header = True , sep = ' ')
+            f.close()
+        else: print('Only .pkl or .csv are implemented.')
         return event
     
     def on_clickInfo(self, event):
-        event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline([grab_dic(self.info)],size=(80, 10))],[sg.Cancel()]]).Read()   
+        event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline(pprint.pformat(self.info),size=(80, 10))],[sg.Cancel()]]).Read()   
         return event
 
     
@@ -396,11 +399,11 @@ def fitPanel(event, ax, data):
         sg.Spin(data.index,key='rr_spin',size=(10, 20), auto_size_text = True)],
         [sg.ReadButton('Fit')],
         [sg.ReadButton('Finde Fermi Edge'), sg.Text(r'Fermi edge [eV]'), sg.InputText(size =(10,10), key='fermi_edge'), sg.Text('16%-84% width [eV]'), sg.InputText(size =(10,10),  key = 'resolution')] ,
-                [sg.ReadButton('Fit Fermi Function'), sg.Text(r'E_f:'),sg.InputText(size =(10,10), key = 'E_f'), sg.Text(r'b:'),sg.InputText(size =(10,10), key = 'b'),sg.Text(r's:'),sg.InputText(size =(10,10), key = 's'),sg.Text(r'T:'),sg.InputText(size =(10,10), key = 'T'),],
+        [sg.ReadButton('Fit Fermi Function'), sg.Text(r'E_f:'),sg.InputText(size =(10,20), key = 'E_f', default_text= '16.9'), sg.Text(r'b:'), sg.InputText(size =(10,20), default_text = '20000', key = 'b'),sg.Text(r's:'),sg.InputText(size =(10,20),default_text = '100', key = 's'),sg.Text(r'T:'),sg.InputText(size =(10,20),default_text = '300', key = 'T'),],
         [sg.Cancel()],
     ]
    
-    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number),  grab_anywhere=False)
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number),  grab_anywhere=True, auto_size_text=True)
     window.Layout(layout)
     window.Finalize()
     line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
@@ -452,7 +455,13 @@ def fitPanel(event, ax, data):
                     raise
         if event == 'Fit Fermi Function':
             try:
-                xFit, yFit = experiment.fitFermi(data)  #####Hier noch die WERTE von GUI eintragen
+                xFit, yFit, out = experiment.fitFermi(float(values['E_f']), float(values['b']), float(values['s']), float(values['T']))
+                fitParam = out.params.valuesdict()
+                print(fitParam)
+                window.FindElement('E_f').Update(str(fitParam['E_f']))
+                window.FindElement('b').Update(str(fitParam['b']))
+                window.FindElement('s').Update(str(fitParam['s']))
+                window.FindElement('T').Update(str(fitParam['T']))
                 ax.plot(xFit,yFit)
             except:
                 print("Error:", sys.exc_info()[0]) 
@@ -587,13 +596,14 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True, default_path='../Auswertung/Data_for_python/')      
+            filename = sg.PopupGetFile('file to open', no_window=True, default_path='/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180622/')      
             try:
                 if filename: print(filename)
                 plt.ion()
                 global experiment 
                 experiment = Uphos(filename)
-                experiment.plotData()
+                name = filename.split('/')
+                experiment.plotData(title = name[-2]+'/'+name[-1][:-4])
                 plt.show()
                 # data = read_pickle(filename)
                 # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
