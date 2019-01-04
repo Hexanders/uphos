@@ -1,8 +1,9 @@
+from __future__ import division, print_function
 import _pickle as pickle
 import os
 import sys
 import numpy as np
-from __future__ import division, print_function
+
 
 def loadObj(path):
     with open(path, 'rb') as input:
