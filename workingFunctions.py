@@ -2,7 +2,7 @@ import _pickle as pickle
 import os
 import sys
 import numpy as np
-
+from __future__ import division, print_function
 
 def loadObj(path):
     with open(path, 'rb') as input:
@@ -221,18 +221,14 @@ def polylinear_gradient(colors, n):
   return gradient_dict
 #######Colors ENDE
 
-from __future__ import division, print_function
-import numpy as np
-
-__author__ = "Marcos Duarte, https://github.com/demotu/BMC"
-__version__ = "1.0.4"
-__license__ = "MIT"
-
 
 def detect_peaks(x, mph=None, mpd=1, threshold=0, edge='rising',
                  kpsh=False, valley=False, show=False, ax=None):
 
     """Detect peaks in data based on their amplitude and other features.
+    __author__ = "Marcos Duarte, https://github.com/demotu/BMC"
+    __version__ = "1.0.4"
+    __license__ = "MIT"
 
     Parameters
     ----------
