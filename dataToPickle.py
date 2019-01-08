@@ -83,7 +83,7 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
         try:
             if overwrite == False and wf.os.path.isfile(aimPath+files[:-3]+'pkl'):
                 continue
-            obj = readIgorTxt(originPath + files)
+            obj = readIgorTxt(files)
             wf.dumpObj(obj,aimPath+files[:-3]+'pkl')
         except IndexError:
             print('Some .txt files could be in REDME, trash or tmp directories.\n \

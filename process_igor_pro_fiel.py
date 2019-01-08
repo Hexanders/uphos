@@ -479,7 +479,8 @@ def main():
     win = window.Finalize()
     # ------ Loop & Process button menu choices ------ #      
     while True:      
-        event, values = window.Read()      
+        event, values = window.Read()
+        print(event)
         if event == None or event == 'Exit':      
             break      
         # ------ Process menu choices ------ #      
