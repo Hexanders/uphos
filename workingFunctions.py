@@ -20,27 +20,27 @@ def dumpObj(obj,path):
         pickle.dump(obj, output, -1)
     print('Dumped: %s' %path.split('/')[-1]  )
 
-def folderListAll(path, ending = None):
-    data_list =[]
-    for (dirpath, dirnames, filenames) in os.walk(path):
-        for i in filenames:
-            if ending:
-                if i.endswith(ending):data_list.append(dirpath+i)
-            else:
-                data_list.append(dirpath+i)
-    data_list.sort()
-    return data_list
-
 # def folderListAll(path, ending = None):
 #     data_list =[]
 #     for (dirpath, dirnames, filenames) in os.walk(path):
 #         for i in filenames:
 #             if ending:
-#                 if i.endswith(ending):data_list.append(dirpath.replace(path,'')+'/'+i)
+#                 if i.endswith(ending):data_list.append(dirpath+i)
 #             else:
-#                 data_list.append(dirpath.replace(path,'')+'/'+i)
+#                 data_list.append(dirpath+i)
 #     data_list.sort()
 #     return data_list
+
+def folderListAll(path, ending = None):
+    data_list =[]
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        for i in filenames:
+            if ending:
+                if i.endswith(ending):data_list.append(dirpath.replace(path,'')+'/'+i)
+            else:
+                data_list.append(dirpath.replace(path,'')+'/'+i)
+    data_list.sort()
+    return data_list
 
 def fileList(path, ending = None):
     data_list =[]
