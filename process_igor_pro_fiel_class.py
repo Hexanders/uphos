@@ -6,6 +6,7 @@ import pandas as pd
 from pandas import read_pickle
 from scipy import constants as const
 from scipy.interpolate import interp1d
+import dataToPickle as dtp
 #import workingFunctions as wf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
@@ -13,17 +14,12 @@ import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
 import pprint
 import lmfit
-
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.io import output_notebook
 from bokeh.models import HoverTool
 from collections import OrderedDict
-
 from scipy.optimize import curve_fit
-
-
 import PySimpleGUI as sg
-
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -31,7 +27,6 @@ import matplotlib.pyplot as plt
 # from PyQt5 import QtCore
 # from PyQt5.QtCore import Qt
 # plt.switch_backend('Qt5Agg') #### macht segfault hmmmmmmm
-
 sg.SetOptions(auto_size_text = False)
 # root = Tk.Tk()
 # screen_width = root.winfo_screenwidth()
@@ -40,14 +35,13 @@ sg.SetOptions(auto_size_text = False)
 class Uphos:
     def __init__(self, path):
         try:
+            self.path = path
             workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
             if path.endswith('.txt'):
                 print('Processing: %s' % workingPath)
-                self.path = path 
-                self.info, self.data = self.readIgorTxt()
+                self.info, self.data = dtp.readIgorTxt(path)
             else:
                 print('Processing: %s' %  workingPath)
-                self.path = path
                 self.info, self.data = read_pickle(path)
         except:
             print ('Can not read file: %s' % path )
@@ -92,24 +86,24 @@ class Uphos:
                     str_list = line.strip().split(' ')
                     str_list = list(filter(None, str_list)) # erase empty strings from list
                     data.append(str_list)
-                    self.data = list(filter(None, data)) # some how one of the elements is empty, erase them!
-                    del self.data[0]             # remove first line because it is a string e.g.'[Data 1]' 
-                    dimOne = np.asfarray(dimOne)
-                    dimTwo = np.asfarray(dimTwo)
+            data = list(filter(None, data)) # some how one of the elements is empty, erase them!
+            del data[0]             # remove first line because it is a string e.g.'[Data 1]' 
+            dimOne = np.asfarray(dimOne)
+            dimTwo = np.asfarray(dimTwo)
             for i in range(0,len(data)):
                 #data[i] = np.asfarray(data[i][1:])
-                self.data[i] = np.asfarray(data[i])
-                self.data = np.asfarray(data)
-                self.data = pd.DataFrame(data=data)
-                self.data = data.set_index([0])
-                self.data.columns = dimTwo
-                #data = data.to_panel()
+                data[i] = np.asfarray(data[i])
+            data = np.asfarray(data)
+            data = pd.DataFrame(data=data)
+            data = data.set_index([0])
+            data.columns = dimTwo
+            #data = data.to_panel()
             info_dic = {}
             for i in info:
                 if 'Dimension 1 name' in i:
-                    self.data.index.name = i.split('=')[1]
+                    data.index.name = i.split('=')[1]
                 if 'Dimension 2 name' in i:
-                    self.data.columns.name = i.split('=')[1] 
+                    data.columns.name = i.split('=')[1] 
                 if i == '':
                     continue
                 if i.startswith('[') and i.endswith(']'):
@@ -118,7 +112,8 @@ class Uphos:
                     continue
                 sub_item = i.split('=' , 1)
                 info_dic[curent_item][sub_item[0]] = sub_item[1]
-            self.data = (info_dic, self.data)
+        self.data = data
+        self.info = info_dic
 
     def plotData(self, title = None, interactive = True):
         fig = plt.figure()

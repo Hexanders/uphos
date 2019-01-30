@@ -39,7 +39,7 @@ def readIgorTxt(igor_data_path):
                 str_list = line.strip().split(' ')
                 str_list = list(filter(None, str_list)) # erase empty strings from list
                 data.append(str_list)
-                data = list(filter(None, data)) # some how one of the elements is empty, erase them!
+        data = list(filter(None, data)) # some how one of the elements is empty, erase them!
         del data[0]             # remove first line because it is a string e.g.'[Data 1]' 
         dimOne = np.asfarray(dimOne)
         dimTwo = np.asfarray(dimTwo)
@@ -66,7 +66,6 @@ def readIgorTxt(igor_data_path):
             sub_item = i.split('=' , 1)
             info_dic[curent_item][sub_item[0]] = sub_item[1]
         return(info_dic, data)
-
 def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite = False):
     """
     Converts all .txt files in the originPath directory into .pkl and puts them in seid aimPath Directory 

@@ -499,6 +499,7 @@ def main():
                 plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])
             except:
                 print('\tOpen file function was aborted.')
+                raise
                 pass
 if __name__ == '__main__':
     main()
