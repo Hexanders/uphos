@@ -48,7 +48,7 @@ class Uphos:
             raise
         
     def get_data(self):
-        return data
+        return self.data
     
     def readIgorTxt(self):
         """
@@ -398,7 +398,7 @@ def fitPanel(event, ax, data):
         [sg.Cancel()],
     ]
    
-    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number),  grab_anywhere=True, auto_size_text=True)
+    window = sg.Window('Fit Parameter for figure ' + str(plt.gcf().number),  grab_anywhere=False, auto_size_text=True)
     window.Layout(layout)
     window.Finalize()
     line1, = ax.plot((leftbound,leftbound),y_lim, color = 'r', marker = '>', alpha=0.5)
