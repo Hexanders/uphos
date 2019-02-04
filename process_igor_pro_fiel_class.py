@@ -49,7 +49,23 @@ class Uphos:
         
     def get_data(self):
         return self.data
+
+    def get_INFO(self):
+        return self.info
     
+    def exportCSV(self, path, data):
+        # if path.endswith('/'):
+        #     path = path + self.path.split('/')[-1]
+        # else:
+        #     path = path + '/' + self.path.split('/')[-1]
+        f = open(path, 'a')
+        info = grab_dic(self.info)
+        for i in info:
+            f.write('# '+i)
+        data.to_csv(f)
+        f.close()
+        
+   
     def readIgorTxt(self):
         """
         Convert data points from Igor Pro generated .txt file.
@@ -183,8 +199,11 @@ class Uphos:
         '''Integriere Daten entlang einzelnen Energiewerten '''
         if data is not None:
             self.XredData = data.apply(np.sum, axis = 1)
+            new_name ='summed over ('+str(data.columns.min()) +' : '+str(data.columns.max()) +') ' + self.data.columns.name 
         else:
-            self.XredData = self.data.apply(np.sum, axis = 1) 
+            self.XredData = self.data.apply(np.sum, axis = 1)
+            new_name ='summed over ('+str(self.data.columns.min()) +' : '+str(self.data.columns.max()) +') ' + self.data.columns.name 
+        self.XredData.name = new_name
         return self.XredData 
 
     def reduceY(self, data = None):
@@ -198,7 +217,7 @@ class Uphos:
 
     def fermiFct(self, x, E_f, b, s, T):
         k_b = const.value(u'Boltzmann constant in eV/K')
-        return b + s*(1./(np.exp((x-E_f)/(k_b*T))+1))
+        return b + s*(1./(np.exp((x-E_f)/(k_b*T))+1))    
 
     def fitFermi(self, a=16.9,b = 1.,c = 1. ,d =70.):
         x = self.XredData.index
@@ -281,7 +300,7 @@ class Uphos:
             self.data = self.data.iloc[:,y1:y2]
         #return data
 
-    def on_clickX(self, event,data):
+    def on_clickX(self, event, data):
         print('Start to Integrate X')
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111)
@@ -297,10 +316,14 @@ class Uphos:
         bcut3 = Button(button3pos, 'Save', color=buttoncolor)
         buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
         buttonFit = Button(buttonFitpos, 'Fit-Panel', color=buttoncolor)
+        buttonEXPpos = plt.axes([0.9, 0.2, 0.1, 0.075])
+        buttonEXP = Button(buttonEXPpos, 'Export as csv', color=buttoncolor)
+        buttonEXP.on_clicked(lambda event:self.exportCSVtrigger(event, reducedData))
         bcut3.on_clicked(lambda event:self.saveReduceData(event, reducedData))
         buttonFit.on_clicked(lambda event:fitPanel(event, ax2, reducedData))
         button3pos._button = bcut3 #without this the garbage collector destroyes the button
         buttonFitpos._button = buttonFit
+        buttonEXPpos._button = buttonEXP
         figures=[manager.canvas.figure
         for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
         for i in figures:
@@ -311,7 +334,12 @@ class Uphos:
             except:
                 pass
         plt.draw()
-           
+        
+    def exportCSVtrigger(self, event, reddata):
+        event, (filename,) = sg.Window('Export to csv'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
+        self.exportCSV(filename, reddata)
+        return event
+    
     def saveReduceData(self, event, reddata):
         event, (filename,) = sg.Window('Save data'). Layout([[sg.Text('Filename')], [sg.Input(), sg.SaveAs()], [sg.OK(), sg.Cancel()]]).Read()
         if filename.endswith('.pkl'):reddata.to_pickle(filename)
@@ -326,11 +354,6 @@ class Uphos:
     def on_clickInfo(self, event):
         event = sg.Window('Info',auto_size_text=True,font=("Helvetica", 18)). Layout([[sg.Multiline(pprint.pformat(self.info),size=(80, 10))],[sg.Cancel()]]).Read()   
         return event
-
-    
-def pklImporter(path):
-    return
-
 
 
 def plotRed(dataSet,info, currentPlot = False):
@@ -356,16 +379,15 @@ def plotRed(dataSet,info, currentPlot = False):
 
 buttoncolor = 'lightskyblue'#'lightgoldenrodyellow'
 
-
-
 def grab_dic(data):
-    #tmp_list = []
     info_list = []
     for ele in data.values():
         if isinstance(ele,dict):
             for k, v in ele.items():
-                info_list.append(k+' : '+v+'\n')
-    return ' '.join(info_list)
+                tmp_list = []
+                tmp_list = [k+' : '+v.replace(';', '\n#\t\t')+'\n']
+                info_list.append(' '.join(tmp_list))
+    return info_list
 
     
     
