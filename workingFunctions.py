@@ -32,6 +32,7 @@ def dumpObj(obj,path):
 #     return data_list
 
 def folderListAll(path, ending = None):
+    ## Returns all file names in folder
     data_list =[]
     for (dirpath, dirnames, filenames) in os.walk(path):
         for i in filenames:
@@ -39,6 +40,18 @@ def folderListAll(path, ending = None):
                 if i.endswith(ending):data_list.append(dirpath.replace(path,'')+'/'+i)
             else:
                 data_list.append(dirpath.replace(path,'')+'/'+i)
+    data_list.sort()
+    return data_list
+
+def allFilesInFolder(path, ending = None):
+    ##Returns a list With whole path name in file names
+    data_list =[]
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        for i in filenames:
+            if ending:
+                if i.endswith(ending):data_list.append(path+'/'+i)
+            else:
+                data_list.append(path+'/'+i)
     data_list.sort()
     return data_list
 
