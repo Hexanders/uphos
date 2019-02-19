@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import numpy as np
+import traceback
 import sys
 from matplotlib.widgets import Button
 import pandas as pd
@@ -33,19 +34,27 @@ sg.SetOptions(auto_size_text = False)
 # screen_height = root.winfo_screenheight()
 
 class Uphos:
-    def __init__(self, path):
-        try:
-            self.path = path
-            workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
-            if path.endswith('.txt'):
-                print('Processing: %s' % workingPath)
-                self.info, self.data = dtp.readIgorTxt(path)
-            else:
-                print('Processing: %s' %  workingPath)
-                self.info, self.data = read_pickle(path)
-        except:
-            print ('Can not read file: %s' % path )
-            raise
+    def __init__(self, path = None):
+        if path:
+            try:
+                self.path = path
+                self.name = self.path.split('/')[-1][:-4]
+                workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
+                if path.endswith('.txt'):
+                    print('Processing: %s' % workingPath)
+                    self.info, self.data = dtp.readIgorTxt(path)
+                else:
+                    print('Processing: %s' %  workingPath)
+                    self.info, self.data = read_pickle(path)
+            except Exception as err:
+                print ('Can not read file: %s' % path )
+                traceback.print_tb(err.__traceback__)
+                pass
+        else:
+            self.path = ''
+            self.info = ''
+            self.data = None
+            pass
         
     def get_data(self):
         return self.data
@@ -53,7 +62,7 @@ class Uphos:
     def get_INFO(self):
         return self.info
     
-    def exportCSV(self, path, data):
+    def exportCSV(self, path, data = None):
         # if path.endswith('/'):
         #     path = path + self.path.split('/')[-1]
         # else:
@@ -62,7 +71,10 @@ class Uphos:
         info = grab_dic(self.info)
         for i in info:
             f.write('# '+i)
-        data.to_csv(f)
+        if data:
+            data.to_csv(f)
+        else:
+            self.data.to_csv(f)
         f.close()
         
    
@@ -154,8 +166,8 @@ class Uphos:
             bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
             bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
             bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-            bcut1.on_clicked(lambda event: self.on_clickX(event, self.data))
-            bcut2.on_clicked(lambda event: self.on_clickY(event, self.data))
+            bcut1.on_clicked(lambda event: self.on_click(event, self.data))
+            bcut2.on_clicked(lambda event: self.on_click(event, self.data, axes ='y'))
             bcut3.on_clicked(lambda event: self.on_clickInfo(event))
             button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
             button2pos._button = bcut2
@@ -203,7 +215,7 @@ class Uphos:
         else:
             self.XredData = self.data.apply(np.sum, axis = 1)
             new_name ='summed over ('+str(self.data.columns.min()) +' : '+str(self.data.columns.max()) +') ' + self.data.columns.name 
-        self.XredData.name = new_name
+        self.XredData.name = self.name +'_'+new_name
         return self.XredData 
 
     def reduceY(self, data = None):
@@ -265,25 +277,7 @@ class Uphos:
         '''Integriere Entlang Y.'''
         #return np.add.reduce(data)
         return self.data.apply(np.sum, axis = 0)
-
-    def on_clickY(self, event, data):
-        print('Start to Integrate Y')
-        fig2 = plt.figure()
-        ax2 = fig2.add_subplot(111)
-        x_lim = ax.get_xlim()
-        y_lim = ax.get_ylim()
-        digis = 3
-        ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis)))) 
-        button4pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-        bcut4 = Button(button4pos, 'Save', color=buttoncolor)
-        slicedData = self.sliceData(data, xlim = x_lim, ylim = y_lim)
-        reducedData = self.reduceByY(slicedData)
-        ax2.plot(reducedData, 'ko')
-        plt.show()
-        bcut4.self.on_clicked(lambda event:saveReduceData(event,reducedData))
-        button4pos._button = bcut4
-        plt.show()
-        
+    
     def sliceData(self, xlim = None, ylim = None):
         if xlim:
             x1 = self.data.index.values.argmin() if xlim[0] < self.data.index.values.min() else np.where(self.data.index.values>=xlim[0])[0][0]
@@ -300,7 +294,7 @@ class Uphos:
             self.data = self.data.iloc[:,y1:y2]
         #return data
 
-    def on_clickX(self, event, data):
+    def on_click(self, event, data, axes = 'x'):
         print('Start to Integrate X')
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111)
@@ -309,8 +303,11 @@ class Uphos:
         digis = 3
         ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
         slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
-        reducedData = self.reduceX(slicedData)
-        #print(reducedData.values, type(reducedData), len(reducedData))
+        if axes == 'x':
+            reducedData = self.reduceX(slicedData)
+        else:
+            reducedData = self.reduceY(slicedData)
+            #print(reducedData.values, type(reducedData), len(reducedData))
         ax2.plot(reducedData, 'bo')
         button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
         bcut3 = Button(button3pos, 'Save', color=buttoncolor)
@@ -391,6 +388,18 @@ def grab_dic(data):
 
     
     
+def exportCSV(path, data, info = None):
+    # if path.endswith('/'):
+    #     path = path + self.path.split('/')[-1]
+    # else:
+    #     path = path + '/' + self.path.split('/')[-1]
+    f = open(path, 'a')
+    if info:
+        info = grab_dic(self.info)
+        for i in info:
+            f.write('# '+i)
+    data.to_csv(f)
+    f.close()
 
 def fitPanel(event, ax, data):
     x_lim = ax.get_xlim()
@@ -546,9 +555,9 @@ def LinearFit(x,a,b):
     return a*x+b
 
 def fitLinear(event, x_range, data, ax, color):
-    mask = (data.index > x_range[0]) & (data.index <= x_range[1])    
+    mask = (data.index > x_range[0]) & (data.index <= x_range[1])
     try:
-        popt, pcov = curve_fit(LinearFit, data.index[mask], data.values[mask])
+        popt, pcov = curve_fit(LinearFit, data.index.values[mask], data.values[mask])
     except:
         print("Error:", sys.exc_info()[0])
         #raise
@@ -585,7 +594,7 @@ def main():
     __copyright__ = "Royalty-free"
     __credits__ = ""
     __license__ = ""
-    __version__ = "1.5"
+    __version__ = "2.0"
     __maintainer__ = "Alexander Kononov"
     __email__ = "alexander.kononov@tu-dortmund.de"
     __status__ = "Production"
@@ -599,7 +608,6 @@ def main():
         [sg.Menu(menu_def, )],      
         [sg.Output(size=(60, 20))]      
              ]      
-
     window = sg.Window("UPhoS", default_element_size=(15, 1), auto_size_text=False, auto_size_buttons=False, default_button_element_size=(15, 1)).Layout(layout)
     win = window.Finalize()
     # ------ Loop & Process button menu choices ------ #      
@@ -613,7 +621,7 @@ def main():
                      __copyright__+'\n License: '+__license__+'\n Version: '+\
                      __version__+'\n Status: '+__status__)      
         elif event == 'Open':      
-            filename = sg.PopupGetFile('file to open', no_window=True, default_path='/run/media/hexander/main_drive/hexander/Documents/Uni/Promotion/UPS/Data_pkl/180622/')      
+            filename = sg.PopupGetFile('file to open', no_window=True, keep_on_top =True, default_extension='txt', default_path='../../Data/')      
             try:
                 if filename: print(filename)
                 plt.ion()

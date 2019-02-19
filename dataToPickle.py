@@ -66,6 +66,7 @@ def readIgorTxt(igor_data_path):
             sub_item = i.split('=' , 1)
             info_dic[curent_item][sub_item[0]] = sub_item[1]
         return(info_dic, data)
+    
 def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite = False):
     """
     Converts all .txt files in the originPath directory into .pkl and puts them in seid aimPath Directory 
