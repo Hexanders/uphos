@@ -39,12 +39,12 @@ class Uphos:
             try:
                 self.path = path
                 self.name = self.path.split('/')[-1][:-4]
-                workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
+                self.workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
                 if path.endswith('.txt'):
-                    print('Processing: %s' % workingPath)
+                    print('Processing: %s' % self.workingPath)
                     self.info, self.data = dtp.readIgorTxt(path)
                 else:
-                    print('Processing: %s' %  workingPath)
+                    print('Processing: %s' %  self.workingPath)
                     self.info, self.data = read_pickle(path)
             except Exception as err:
                 print ('Can not read file: %s' % path )
@@ -174,7 +174,7 @@ class Uphos:
             button3pos._button = bcut3
         return im
 
-    def plotOverviw(self, data = None):
+    def plotOverview(self, data = None):
         if data is not None:
             tmp_data = data
         else:
@@ -200,6 +200,7 @@ class Uphos:
         plt.plot(yred.values, yred.index.values)
         #x_int = fig.add_subplot(grid[-1, 1:])
         x_int = fig.add_subplot(grid[0, :-1])
+        x_int.set_title(self.workingPath)
         x_int.get_xaxis().set_ticks([])
         #plt.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useMathText = True)
         plt.xlim(main_xlim)
