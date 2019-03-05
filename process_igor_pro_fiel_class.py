@@ -143,22 +143,45 @@ class Uphos:
         self.data = data
         self.info = info_dic
 
-    def plotData(self, title = None, interactive = True):
-        fig = plt.figure()
+    def plotData(self, xy_label = (True,True), axExtern = None,  title = None, interactive = True):
+        '''
+        Plots data of an object into an Image.
+        Parameters:
+            xy_label: Boolean : Display or not x or/and y Labels from pandas Dataframe Column/Index names
+            axExtern: Matplotlib axes:  for External ploting
+            Title: String: Title of the subplot
+            interactive: Bollean: Display or not the buttons for data Proccecing
+        Returns:
+            imshow Object
+        '''
         # cid = fig.canvas.mpl_connect('resize_event', onresize)
-        global ax
-        ax = fig.add_subplot(111)
-        if title:
-            fig.canvas.set_window_title(title)
-        else:
-            fig.canvas.set_window_title('Data_Set')
+        if not axExtern:
+            fig = plt.figure()
+            global ax
+            ax = fig.add_subplot(111)
+            if title:
+                fig.canvas.set_window_title(title)
+            else:
+                fig.canvas.set_window_title('Data_Set')
         x,y = self.data.index.values, self.data.columns.values
         extent = np.min(x), np.max(x), np.min(y), np.max(y)
-        im = plt.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-        plt.xlabel(self.data.index.name)
-        plt.ylabel(self.data.columns.name)
-        plt.colorbar()
-        plt.tight_layout()
+        if axExtern:
+            fig = axExtern
+            im = axExtern.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+            plt.colorbar(im, ax=axExtern)
+            if xy_label[0] == True:
+                axExtern.set_xlabel(self.data.index.name)
+            if xy_label[1] == True:
+                axExtern.set_ylabel(self.data.columns.name)
+   
+        else:
+            im = plt.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+            plt.colorbar()
+            if xy_label[0] == True:
+                plt.xlabel(self.data.index.name)
+            if xy_label[1] == True:
+                plt.ylabel(self.data.columns.name)
+            plt.tight_layout()
         if interactive:
             button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
             button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
