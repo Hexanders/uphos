@@ -56,6 +56,28 @@ class Uphos:
             self.data = None
             pass
         
+    # def __init__(self, path = None):
+    #     if path:
+    #         try:
+    #             self.path = path
+    #             self.name = self.path.split('/')[-1][:-4]
+    #             self.workingPath = path.split('/')[-2]+'/'+path.split('/')[-1]
+    #             if path.endswith('.txt'):
+    #                 print('Processing: %s' % self.workingPath)
+    #                 self.info, self.data = dtp.readIgorTxt(path)
+    #             else:
+    #                 print('Processing: %s' %  self.workingPath)
+    #                 self.info, self.data = read_pickle(path)
+    #         except Exception as err:
+    #             print ('Can not read file: %s' % path )
+    #             traceback.print_tb(err.__traceback__)
+    #             pass
+    #     else:
+    #         self.path = ''
+    #         self.info = ''
+    #         self.data = None
+    #         pass
+        
     def get_data(self):
         return self.data
 
@@ -76,76 +98,13 @@ class Uphos:
         else:
             self.data.to_csv(f)
         f.close()
-        
-   
-    def readIgorTxt(self):
-        """
-        Convert data points from Igor Pro generated .txt file.
-        Return: 
-        Info - list
-        dimOne - 1d numpy array: Kinetic Energy
-        dimTwo - 1d numpy array: Coordinates (Transmition Mode) or angles (ARPES) 
-        data - 2d numpy array: Each element of array represents a slice for certain 
-               Energy along dimTwo (Coordinates or angles). Attention! First element
-               is the Energy of a slice.   
-        """
-        info = []
-        dimOne = []
-        dimTwo = []
-        data = []                       # Each line is 'vertical' slice by one certan Enery 
-        data_field_trigger = False
-        with open(self.path) as igor_data:
-            for line in igor_data:
-                if not data_field_trigger and 'Dimension' and 'scale' in line: 
-                    dim_dummy = line.split('=')
-                    if [int(s) for s in dim_dummy[0].split() if s.isdigit()][0] == 1:
-                        str_list = dim_dummy[1].strip().split(' ')
-                        str_list = list(filter(None, str_list)) # erase empty strings from list
-                        dimOne.extend(str_list)
-                    else:
-                        str_list = dim_dummy[1].strip().split(' ')
-                        str_list = list(filter(None, str_list)) # erase empty strings from list
-                        dimTwo.extend(str_list)
-                if not data_field_trigger and not 'scale' in line:
-                    info.append(line.strip())
-                if 'Data' in line:
-                    data_field_trigger = True
-                if data_field_trigger:
-                    str_list = line.strip().split(' ')
-                    str_list = list(filter(None, str_list)) # erase empty strings from list
-                    data.append(str_list)
-            data = list(filter(None, data)) # some how one of the elements is empty, erase them!
-            del data[0]             # remove first line because it is a string e.g.'[Data 1]' 
-            dimOne = np.asfarray(dimOne)
-            dimTwo = np.asfarray(dimTwo)
-            for i in range(0,len(data)):
-                #data[i] = np.asfarray(data[i][1:])
-                data[i] = np.asfarray(data[i])
-            data = np.asfarray(data)
-            data = pd.DataFrame(data=data)
-            data = data.set_index([0])
-            data.columns = dimTwo
-            #data = data.to_panel()
-            info_dic = {}
-            for i in info:
-                if 'Dimension 1 name' in i:
-                    data.index.name = i.split('=')[1]
-                if 'Dimension 2 name' in i:
-                    data.columns.name = i.split('=')[1] 
-                if i == '':
-                    continue
-                if i.startswith('[') and i.endswith(']'):
-                    info_dic[i] = {} 
-                    curent_item = i
-                    continue
-                sub_item = i.split('=' , 1)
-                info_dic[curent_item][sub_item[0]] = sub_item[1]
-        self.data = data
-        self.info = info_dic
-
+    # def plotAll(self):
+    #     for i in self.data[1]:
+    #         plotData
     def plotData(self, xy_label = (True,True), axExtern = None,  title = None, interactive = True):
         '''
         Plots data of an object into an Image.
+        Data format ist (name,pandas.DataFrame)
         Parameters:
             xy_label: Boolean : Display or not x or/and y Labels from pandas Dataframe Column/Index names
             axExtern: Matplotlib axes:  for External ploting
@@ -155,46 +114,46 @@ class Uphos:
             imshow Object
         '''
         # cid = fig.canvas.mpl_connect('resize_event', onresize)
-        if not axExtern:
-            fig = plt.figure()
-            global ax
-            ax = fig.add_subplot(111)
-            if title:
-                fig.canvas.set_window_title(title)
+        for current_data in self.data:
+            if not axExtern:
+                fig = plt.figure()
+                global ax
+                ax = fig.add_subplot(111)
+                if title:
+                    fig.canvas.set_window_title(title)
+                else:
+                    fig.canvas.set_window_title(current_data[0])
+            y,x = current_data[1].index.values, current_data[1].columns.values
+            extent = np.min(x), np.max(x), np.min(y), np.max(y)
+            if axExtern:
+                fig = axExtern
+                im = axExtern.imshow(curent_data[1],extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+                plt.colorbar(im, ax=axExtern)
+                # if xy_label[0] == True:
+                #     axExtern.set_xlabel(current_data.index.name)
+                # if xy_label[1] == True:
+                #     axExtern.set_ylabel(current_data.columns.name)   
             else:
-                fig.canvas.set_window_title('Data_Set')
-        x,y = self.data.index.values, self.data.columns.values
-        extent = np.min(x), np.max(x), np.min(y), np.max(y)
-        if axExtern:
-            fig = axExtern
-            im = axExtern.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-            plt.colorbar(im, ax=axExtern)
-            if xy_label[0] == True:
-                axExtern.set_xlabel(self.data.index.name)
-            if xy_label[1] == True:
-                axExtern.set_ylabel(self.data.columns.name)
-   
-        else:
-            im = plt.imshow(self.data.T,extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
-            plt.colorbar()
-            if xy_label[0] == True:
-                plt.xlabel(self.data.index.name)
-            if xy_label[1] == True:
-                plt.ylabel(self.data.columns.name)
-            plt.tight_layout()
-        if interactive:
-            button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
-            button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
-            button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
-            bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
-            bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
-            bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-            bcut1.on_clicked(lambda event: self.on_click(event, self.data))
-            bcut2.on_clicked(lambda event: self.on_click(event, self.data, axes ='y'))
-            bcut3.on_clicked(lambda event: self.on_clickInfo(event))
-            button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
-            button2pos._button = bcut2
-            button3pos._button = bcut3
+                im = plt.imshow(current_data[1],extent=extent, origin = 'lower', cmap='hot',  aspect = 'auto')
+                plt.colorbar()
+                # if xy_label[0] == True:
+                #     plt.xlabel(current_data.index.name)
+                # if xy_label[1] == True:
+                #     plt.ylabel(current_data.columns.name)
+                plt.tight_layout()
+            if interactive:
+                button1pos= plt.axes([0.79, 0.0, 0.1, 0.075]) #posx, posy, width, height in %
+                button2pos = plt.axes([0.9, 0.0, 0.1, 0.075])
+                button3pos = plt.axes([0.9, 0.1, 0.1, 0.075])
+                bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
+                bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
+                bcut3 = Button(button3pos, 'Info', color=buttoncolor)
+                bcut1.on_clicked(lambda event: self.on_click(event, current_data[1]))
+                bcut2.on_clicked(lambda event: self.on_click(event, current_data[1], axes ='y'))
+                bcut3.on_clicked(lambda event: self.on_clickInfo(event))
+                button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
+                button2pos._button = bcut2
+                button3pos._button = bcut3
         return im
 
     def plotOverview(self, data = None):
@@ -234,10 +193,10 @@ class Uphos:
     def reduceX(self, data = None):
         '''Integriere Daten entlang einzelnen Energiewerten '''
         if data is not None:
-            self.XredData = data.apply(np.sum, axis = 1)
-            new_name ='summed over ('+str(data.columns.min()) +' : '+str(data.columns.max()) +') ' + self.data.columns.name 
+            self.XredData = data.apply(np.sum, axis = 0)
+            new_name ='summed over ('+str(data.columns.min()) +' : '+str(data.columns.max()) +') ' + data.columns.name 
         else:
-            self.XredData = self.data.apply(np.sum, axis = 1)
+            self.XredData = self.data.apply(np.sum, axis = 0)
             new_name ='summed over ('+str(self.data.columns.min()) +' : '+str(self.data.columns.max()) +') ' + self.data.columns.name 
         self.XredData.name = self.name +'_'+new_name
         return self.XredData 
@@ -246,9 +205,9 @@ class Uphos:
         '''Integritmp_dataere Entlang Y.'''
         #return np.add.reduce(data)
         if data is not None:
-            self.YredData = data.apply(np.sum, axis = 0)
+            self.YredData = data.apply(np.sum, axis = 1)
         else:
-            self.YredData = self.data.apply(np.sum, axis = 0) 
+            self.YredData = self.data.apply(np.sum, axis = 1) 
         return self.YredData
 
     def fermiFct(self, x, E_f, b, s, T):
@@ -326,13 +285,15 @@ class Uphos:
         y_lim = ax.get_ylim()
         digis = 3
         ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
-        slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
+        #slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
         if axes == 'x':
-            reducedData = self.reduceX(slicedData)
+            # reducedData = self.reduceX(slicedData)
+            reducedData = self.reduceX(data)
         else:
-            reducedData = self.reduceY(slicedData)
+            reducedData = self.reduceY(data)
             #print(reducedData.values, type(reducedData), len(reducedData))
         ax2.plot(reducedData, 'bo')
+        #ax2.plot(data, 'bo')
         button3pos = plt.axes([0.9, 0.0, 0.1, 0.075])
         bcut3 = Button(button3pos, 'Save', color=buttoncolor)
         buttonFitpos = plt.axes([0.9, 0.1, 0.1, 0.075])
@@ -652,7 +613,10 @@ def main():
                 global experiment 
                 experiment = Uphos(filename)
                 name = filename.split('/')
-                experiment.plotData(title = name[-2]+'/'+name[-1][:-4])
+                #experiment.plotData(title = name[-2]+'/'+name[-1][:-4])
+                #for i in experiment.data:
+                experiment.plotData()
+                    
                 plt.show()
                 # data = read_pickle(filename)
                 # plotData(data, title = filename.split('/')[-1:])#, title = filename.split('/')[:-2])

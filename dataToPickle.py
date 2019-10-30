@@ -4,8 +4,56 @@ import pandas as pd
 import time
 import workingFunctions as wf
 
-
 def readIgorTxt(igor_data_path):
+    """
+    Convert data points from Igor Pro generated .txt file.
+    Return: [Info,data_set]
+            Info: Dictionary with all meta data
+            data_set: List of tuples  e.g.( (name1,pandas.DataFrame1), (name2,pandas.DataFrame2), ...]
+                     name: e.g. [Data 1:1]
+                     pandas.DataFrame: columns: Energy, index: Angle or x-Location 
+    """
+    info = {}
+    data_list ={}
+    current_key = []
+    data_field = False
+    with open(igor_data_path) as f:
+        all_lines = f.readlines()
+        for i in range(0,len(all_lines)):
+            lines = all_lines[i]
+            l = lines.strip()
+            if 'Data' in l: data_field = True 
+            if not data_field:
+                if l.startswith('[') and l.endswith(']'):
+                    current_key = l
+                    info[current_key] = {}
+                if not lines.startswith('[') and not lines.endswith(']') and l:
+                    if 'Dimension' in l and 'scale' in l:
+                        info[current_key][l.split('=')[0]]=[float(x) for x in l.split('=')[1].split(' ')]
+                    else:
+                        info[current_key][l.split('=')[0]]=l.split('=')[1]
+            else:
+                if 'Data' in l:
+                    counter = 0
+                    curent_data_index  = l
+                    data_list[curent_data_index] = {}
+                elif not l: #avoiding empty lines
+                    continue
+                else:
+                    counter += 1
+                    data_list[curent_data_index][counter] = [float(x) for x in l.split('  ')]
+    data_set = []
+    for key in data_list.keys():
+        data = pd.DataFrame.from_dict(data_list[key])
+        data.columns = data.iloc[0]
+        data = data.drop(data.index[0])
+        data.index = info['[Region 1]']['Dimension 2 scale']
+        data.index.name = info['[Region 1]']['Dimension 2 name']
+        data.columns.name = info['[Region 1]']['Dimension 1 name']
+        data_set.append([key, data])    
+    return(info,data_set)
+
+def readIgorTxt_OLD(igor_data_path):
     """
     Convert data points from Igor Pro generated .txt file.
     Return: 
