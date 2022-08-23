@@ -11,7 +11,7 @@ import dataToPickle as dtp
 #import workingFunctions as wf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 import tkinter as Tk 
-import matplotlib.backends.tkagg as tkagg
+#import matplotlib.backends.tkagg as tkagg
 import matplotlib._pylab_helpers
 import pprint
 import lmfit
@@ -149,8 +149,8 @@ class Uphos:
                 bcut1 = Button(button1pos, 'Int. X', color=buttoncolor)
                 bcut2 = Button(button2pos, 'Int. Y', color=buttoncolor)
                 bcut3 = Button(button3pos, 'Info', color=buttoncolor)
-                bcut1.on_clicked(lambda event: self.on_click(event, current_data[1]))
-                bcut2.on_clicked(lambda event: self.on_click(event, current_data[1], axes ='y'))
+                bcut1.on_clicked(lambda event: self.on_click(event, current_data[1], ax = ax))
+                bcut2.on_clicked(lambda event: self.on_click(event, current_data[1], ax = ax,axes ='y'))
                 bcut3.on_clicked(lambda event: self.on_clickInfo(event))
                 button1pos._button = bcut1 #otherwise the butten will be killed by carbagcollector
                 button2pos._button = bcut2
@@ -245,6 +245,7 @@ class Uphos:
         print(out.fit_report())
         #plt.plot(x, out.best_fit, 'k-')
         #values = {'E_f':popt[0],'B':popt[1],'S':popt[2],'T':popt[3]}
+        print(out.best_fit)
         return (x,out.best_fit)
 
     
@@ -283,34 +284,35 @@ class Uphos:
         return self.data.apply(np.sum, axis = 0)
     
     def sliceData(self, xlim = None, ylim = None):
-        if xlim:
-            x1 = self.data.index.values.argmin() if xlim[0] < self.data.index.values.min() else np.where(self.data.index.values>=xlim[0])[0][0]
-            x2 = self.data.index.values.argmax() if xlim[1] > self.data.index.values.max() else np.where(self.data.index.values>=xlim[1])[0][0] 
-        if ylim:
-            #hier funkt was nicht. Die Columns werden nicht richtig wiedergegeben.
-            y1 = self.data.columns.values.argmin() if ylim[0] < self.data.columns.values.min() else np.where(self.data.columns.values>=ylim[0])[0][0]
-            y2 = self.data.columns.values.argmax() if ylim[1] > self.data.columns.values.max() else np.where(self.data.columns.values>=ylim[1])[0][0]
-        if xlim and ylim:
-            self.data = self.data.iloc[x1:x2,y1:y2] 
-        elif xlim:
-            self.data = self.data.iloc[x1:x2,:]
-        elif ylim:
-            self.data = self.data.iloc[:,y1:y2]
-        #return data
+        # print(len(self.data))
+        # print(self.data[0])
+        # if xlim and ylim:
+        #     self.data = self.data.iloc[x1:x2,y1:y2] 
+        # elif xlim:
+        #     self.data = self.data.iloc[x1:x2,:]
+        # elif ylim:
+        #     self.data = self.data.iloc[:,y1:y2]
+        return self.data
 
-    def on_click(self, event, data, axes = 'x'):
+    def on_click(self, event, data, ax = None, axes = 'x'):
         print('Start to Integrate X')
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111)
-        x_lim = ax.get_xlim()
-        y_lim = ax.get_ylim()
+        if ax:
+            x_lim = ax.get_xlim()
+            y_lim = ax.get_ylim()
+            slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
+            print(slicedData)
+        else:
+            slicedData = data
         digis = 3
         ax2.set_title('x:%s y:%s' %((round(x_lim[0],digis),round(x_lim[1],digis)), (round(y_lim[0],digis),round(y_lim[1],digis))))
-        #slicedData = self.sliceData(xlim = x_lim, ylim = y_lim)
+        
         if axes == 'x':
-            # reducedData = self.reduceX(slicedData)
+            #reducedData = self.reduceX(slicedData)
             reducedData = self.reduceX(data)
         else:
+            #reducedData = self.reduceY(slicedData)
             reducedData = self.reduceY(data)
             #print(reducedData.values, type(reducedData), len(reducedData))
         ax2.plot(reducedData, 'bo')

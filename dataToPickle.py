@@ -124,6 +124,7 @@ def convertAll(originPath, aimPath, ending = '.txt', exeptions = None, overwrite
     total_length = len(listOfDirs)
     for files in listOfDirs:
         counter += 1
+    
         wf.print_progress(counter, total_length)
         if exeptions:
             if any(x in files for x in exeptions):
